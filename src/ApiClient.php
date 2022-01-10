@@ -216,10 +216,36 @@ class ApiClient
             return $this->handleException($exception, get_class(), $uri);
         }
     }
+
+    /**
+     * GitLab API POST Request
+     * This method is called from other services to perform a POST request and
+     * return a structured object.
+     *
+     * Example Usage:
+     * ```php
+     * $gitlab_api = new \Glamstack\Gitlab\ApiClient('gitlab_com');
+     * return $gitlab_api->post('/users/'.$id.'/unblock');
+     * ```
+     *
+     * @param string $uri The URI with leading slash after `/api/v4`
+     *
+     * @param array $request_data Optional Post Body array
+     *
+     * @return object|string
      */
-    public function get($endpoint, $request_data = []): object
+    public function post(string $uri, array $request_data = []): object|string
     {
-        return $this->apiGetRequest($endpoint, $request_data);
+        //Perform API call
+        try {
+            $response = Http::withToken($this->access_token)
+                ->post($this->base_url . $uri, $request_data);
+
+            // Parse API Response and convert to returnable object with expected format
+            return $this->parseApiResponse($response);
+        } catch (\Illuminate\Http\Client\RequestException $exception) {
+            return $this->handleException($exception, get_class(), $uri);
+        }
     }
 
     /**
