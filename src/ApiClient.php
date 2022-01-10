@@ -325,6 +325,79 @@ class ApiClient
             return false;
         }
     }
+
+    /**
+     * Convert API Response Headers to Object
+     * This method is called from the parseApiResponse method to prettify the
+     * Guzzle Headers that are an array with nested array for each value, and
+     * converts the single array values into strings and converts to an object for
+     * easier and consistent accessibility with the parseApiResponse format.
+     *
+     * @param array $header_response
+     * [
+     *    "Date" => [
+     *      "Tue, 02 Nov 2021 16:00:30 GMT",
+     *    ],
+     *    "Content-Type" => [
+     *      "application/json",
+     *    ],
+     *    "Transfer-Encoding" => [
+     *      "chunked",
+     *    ],
+     *    "Connection" => [
+     *      "keep-alive",
+     *    ],
+     *    "Cache-Control" => [
+     *      "max-age=0, private, must-revalidate",
+     *    ],
+     *    "Etag" => [
+     *      "W/"ef80161dad0045459a87879e4d6b0769"",
+     *    ],
+     *    ...(truncated)
+     * ]
+     *
+     * @return object
+     *  {
+     *      +"Date": "Tue, 02 Nov 2021 16:28:37 GMT",
+     *      +"Content-Type": "application/json",
+     *      +"Transfer-Encoding": "chunked",
+     *      +"Connection": "keep-alive",
+     *      +"Cache-Control": "max-age=0, private, must-revalidate",
+     *      +"Etag": "W/"534830b145cda36bcd6bcd91c3ed3742"",
+     *      +"Link": (truncated),
+     *      +"Vary": "Origin",
+     *      +"X-Content-Type-Options": "nosniff",
+     *      +"X-Frame-Options": "SAMEORIGIN",
+     *      +"X-Next-Page": "",
+     *      +"X-Page": "1",
+     *      +"X-Per-Page": "20",
+     *      +"X-Prev-Page": "",
+     *      +"X-Request-Id": "01FKGQPA4V7TPC70J60J72GJ30",
+     *      +"X-Runtime": "0.148641",
+     *      +"X-Total": "1",
+     *      +"X-Total-Pages": "1",
+     *      +"RateLimit-Observed": "2",
+     *      +"RateLimit-Remaining": "1998",
+     *      +"RateLimit-Reset": "1635870577",
+     *      +"RateLimit-ResetTime": "Tue, 02 Nov 2021 16:29:37 GMT",
+     *      +"RateLimit-Limit": "2000",
+     *      +"GitLab-LB": "fe-14-lb-gprd",
+     *      +"GitLab-SV": "localhost",
+     *      +"CF-Cache-Status": "DYNAMIC",
+     *      +"Expect-CT": "max-age=604800, report-uri="https://report-uri.cloudflare.com/cdn-cgi/beacon/expect-ct"",
+     *      +"Strict-Transport-Security": "max-age=31536000",
+     *      +"Server": "cloudflare",
+     *      +"CF-RAY": "6a7ebcad3ce908db-SEA",
+     *  }
+     */
+    public function convertHeadersToObject(array $header_response): object
+    {
+        $headers = [];
+        foreach ($header_response as $header_key => $header_value) {
+            $headers[$header_key] = implode(" ", $header_value);
+        }
+        return (object) $headers;
+    }
      *
      * @return object api_response object from BaseService class
      */
