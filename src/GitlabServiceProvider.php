@@ -8,7 +8,7 @@ class GitlabServiceProvider extends ServiceProvider
 {
     // use ServiceBindings;
 
-    public function boot()
+    public function boot() : void
     {
         $this->bootRoutes();
     }
@@ -29,7 +29,7 @@ class GitlabServiceProvider extends ServiceProvider
         //$this->loadRoutesFrom(__DIR__.'/Routes/console.php');
     }
 
-    protected function registerConfig()
+    protected function registerConfig() : void
     {
 
         //
@@ -76,3 +76,4 @@ class GitlabServiceProvider extends ServiceProvider
         }
     }
 }
+
