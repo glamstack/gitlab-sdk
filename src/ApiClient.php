@@ -22,9 +22,89 @@ class ApiClient
                 'there is no API base URL or API token to connect with.');
         }
     }
+
+    /**
+     * Set the URL and access token used for GitLab API calls.
+     *
+     * @param string $instance_key The key of the array in config/glamstack-gitlab.php
+     *
+     * @return bool
+     */
+    public function getApiConnectionVariables(string $instance_key): bool
     {
-        // Call BaseService methods to establish API connection
-        $this->getApiConnectionVariables($instance_key);
+        // Get the instance configuration from config/glamstack-gitlab.php array
+        /** @phpstan-ignore-next-line */
+        if (!array_key_exists($instance_key, config('glamstack-gitlab'))) {
+            Log::stack(config('glamstack-gitlab.log_channels'))->error('The GitLab instance key is ' .
+                'not defined in config/glamstack-gitlab.php.',
+                [
+                    'log_event_type' => 'glamstack-missing-config',
+                    'log_class' => get_class(),
+                    'error_code' => '501',
+                    'error_message' => 'The GitLab instance key is not defined ' .
+                        'in config/glamstack-gitlab.php. Without this configuration, ' .
+                        'there is no API base URL or API token to connect with.',
+                    'error_reference' => $instance_key,
+                ]
+            );
+
+            return false;
+        }
+
+        // Check if the Base URL has been configured in the instance_key array
+        // in config/glamstack-gitlab.php and/or the .env file
+        if (config('glamstack-gitlab.'.$instance_key.'.base_url') == null) {
+            Log::channel(config('glamstack-gitlab.log_channels'))->error('The GitLab base URL for ' .
+                'instance key is null. Without this configuration, there is ' .
+                'no API base URLto connect with. You can configure the base ' .
+                'URL in config/glamstack-gitlab.php or .env file.',
+                [
+                    'log_event_type' => 'glamstack-missing-config',
+                    'log_class' => get_class(),
+                    'error_code' => '501',
+                    'error_message' => 'The GitLab base URL for instance key '.
+                        'is null. Without this configuration, there is no API '.
+                        'base URL to connect with. You can configure the base '.
+                        'URL in config/glamstack-gitlab.php or .env file.',
+                    'error_reference' => $instance_key,
+                ]
+            );
+
+            return false;
+        }
+
+        // Check if the Access Token has been configured in the instance_key
+        // array in config/glamstack-gitlab.php and/or the .env file
+        if (config('glamstack-gitlab'.$instance_key.'access_token') == null) {
+            Log::channel(config('glamstack-gitlab.log_channels'))->warning('The GitLab access token ' .
+                'for instance key is null. Without this configuration, there ' .
+                'is no API token to use for authenticated API requests. It is '.
+                'still possible to perform API calls to public endpoints '.
+                'without an access token, however you may see unexpected '.
+                'errors based on permissions.',
+                [
+                    'log_event_type' => 'gitlab-api-response-error',
+                    'log_class' => get_class(),
+                    'error_code' => '501',
+                    'error_message' =>  'The GitLab access token for instance '.
+                        'key is null. Without this configuration, there is no ' .
+                        'API token to use for authenticated API requests. It '.
+                        'is still possible to perform API calls to public '.
+                        'endpoints without an access token, however you may '.
+                        'see unexpected errors based on permissions.',
+                    'error_reference' => $instance_key,
+                ]
+            );
+
+            return false;
+        }
+
+        // Set API Client properties to use in other methods
+        $this->base_url = config('glamstack-gitlab.'.$instance_key.'.base_url') . '/api/v4';
+        /** @phpstan-ignore-next-line */
+        $this->access_token = config('glamstack-gitlab.'.$instance_key.'.access_token');
+
+        return true;
     }
 
     /**
