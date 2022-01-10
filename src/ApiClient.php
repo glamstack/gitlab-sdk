@@ -280,10 +280,32 @@ class ApiClient
     }
 
     /**
-     * Use GitLab API to update an resource with a PUT request.
+     * GitLab API DELETE Request
+     * This method is called from other services to perform a DELETE request and return a structured object.
      *
-     * @param string $endpoint URI with leading `/` for API resource
-     * @param array $request_data Optional request data to send with PUT request
+     * Example Usage:
+     * ```php
+     * $gitlab_api = new \Glamstack\Gitlab\ApiClient('gitlab_com');
+     * return $gitlab_api->delete('/user/'.$id);
+     * ```
+     *
+     * @param string $uri The URI with leading slash after `/api/v4`
+     *
+     * @return object|string
+     */
+    public function delete(string $uri): object|string
+    {
+        //Perform API call
+        try {
+            $response = Http::withToken($this->access_token)
+                ->delete($this->base_url . $uri);
+
+            // Parse API Response and convert to returnable object with expected format
+            return $this->parseApiResponse($response);
+        } catch (\Illuminate\Http\Client\RequestException $exception) {
+            return $this->handleException($exception, get_class(), $uri);
+        }
+    }
      *
      * @return object api_response object from BaseService class
      */
