@@ -398,6 +398,61 @@ class ApiClient
         }
         return (object) $headers;
     }
+
+    /**
+     * Helper method for getting results requiring pagination.
+     *
+     * @see https://docs.gitlab.com/ee/api/#pagination
+     *
+     * @param string $endpoint URL endpoint for the GitLab API
+     *
+     * @param array $request_data Optional request data to send with GET request
+     *
+     * @return array Array of the response objects for each page combined.
+     */
+    public function getPaginatedResults(string $endpoint, array $request_data = []): array
+    {
+        // Create initial page array to load with the request data
+        $initial_page = [
+            'page' => '1'
+        ];
+
+        // Merge the request_data and initial_page variable to allow for getting
+        // the first page of data
+        $request_body = array_merge($request_data, $initial_page);
+
+        // Get a list of records
+        $records = Http::withToken($this->access_token)
+            ->get($endpoint, $request_body);
+
+        // Get total page count from header array
+        $total_pages = $records->headers()['X-Total-Pages'][0];
+
+        // Define empty array to add API results to
+        $records_array = [];
+
+        // Loop through pages
+        for ($page = 1; $page <= $total_pages; $page++) {
+
+            // Create new array with the current page number. Allowing for
+            // looping through the response with the optional query parameters.
+            $new_page = [
+                'page' => $page
+            ];
+
+            // Merge the initial request_data with the new_page array
+            $request_body = array_merge($request_data, $new_page);
+
+            // Get list of records for current page
+            $records_page = Http::withToken($this->access_token)
+                ->get($endpoint, $request_body);
+
+            // Add API data to array with final result
+            $records_array = array_merge($records_array, (array) $records_page->object());
+        }
+
+        return $records_array;
+    }
      *
      * @return object api_response object from BaseService class
      */
