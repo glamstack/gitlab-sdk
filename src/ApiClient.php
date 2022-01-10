@@ -249,16 +249,34 @@ class ApiClient
     }
 
     /**
-     * Use GitLab API to create a new resource
+     * GitLab API PUT Request
+     * This method is called from other services to perform a POST request and
+     * return a structured object.
      *
-     * @param string $endpoint URI with leading `/` for API resource
+     * Example Usage:
+     * ```php
+     * $gitlab_api = new \Glamstack\Gitlab\ApiClient('gitlab_com');
+     * return $gitlab_api->put('/user/status', $status_array);
+     * ```
+     *
+     * @param string $uri The URI with leading slash after `/api/v4`
+     *
      * @param array $request_data Optional request data to send with POST request
      *
-     * @return object api_response object from BaseService class
+     * @return object|string
      */
-    public function post($endpoint, $request_data = []): object
+    public function put(string $uri, array $request_data = []): object|string
     {
-        return $this->apiPostRequest($endpoint, $request_data);
+        //Perform API call
+        try {
+            $response = Http::withToken($this->access_token)
+                ->put($this->base_url . $uri, $request_data);
+
+            // Parse API Response and convert to returnable object with expected format
+            return $this->parseApiResponse($response);
+        } catch (\Illuminate\Http\Client\RequestException $exception) {
+            return $this->handleException($exception, get_class(), $uri);
+        }
     }
 
     /**
