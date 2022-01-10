@@ -1,0 +1,26 @@
+includes:
+    - ./vendor/nunomaduro/larastan/extension.neon
+
+parameters:
+
+    paths:
+        - src
+
+    # The level 9 is the highest level
+    level: 9
+
+    ignoreErrors:
+        - '#Call to an undefined method object::headers\(\)#'
+        - '#Call to an undefined method object::json\(\)#'
+        - '#Call to an undefined method object::object\(\)#'
+        - '#Call to an undefined method object::status\(\)#'
+        - '#Call to an undefined method object::ok\(\)#'
+        - '#Call to an undefined method object::successful\(\)#'
+        - '#Call to an undefined method object::failed\(\)#'
+        - '#Call to an undefined method object::serverError\(\)#'
+        - '#Call to an undefined method object::clientError\(\)#'
+        - '#Access to an undefined property object::\$paginated_results#'
+    excludePaths:
+        - ./*/*/FileToBeExcluded.php
+
+    checkMissingIterableValueType: false
