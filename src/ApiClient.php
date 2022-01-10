@@ -471,12 +471,54 @@ class ApiClient
         }
         return (object) $results;
     }
+
+    /**
+     * Parse the API response and return custom formatted response for consistency
      *
-     * @return object api_response object from BaseService class
+     * @param object $response Response object from API results
+     *
+     * @param false $paginated If the response is paginated or not
+     *
+     * @return object Custom response returned for consistency
+     *  {
+     *    +"headers": {
+     *      +"Date": "Fri, 12 Nov 2021 20:13:55 GMT"
+     *      +"Content-Type": "application/json"
+     *      +"Content-Length": "1623"
+     *      +"Connection": "keep-alive"
+     *    }
+     *    +"json": "{"id":12345678,"name":"Dade Murphy","username":"z3r0c00l","state":"active"}"
+     *    +"object": {
+     *      +"id": 12345678
+     *      +"name": "Dade Murphy"
+     *      +"username": "z3r0c00l"
+     *      +"state": "active"
+     *    }
+     *    +"status": {
+     *      +"code": 200
+     *      +"ok": true
+     *      +"successful": true
+     *      +"failed": false
+     *      +"serverError": false
+     *      +"clientError": false
+     *   }
+     * }
      */
-    public function put($endpoint, $request_data = []): object
+    public function parseApiResponse(object $response, bool $paginated = false): object
     {
-        return $this->apiPutRequest($endpoint, $request_data);
+        return (object) [
+            'headers' => $this->convertHeadersToObject($response->headers()),
+            'json' => $paginated == true ? json_encode($response->paginated_results) : json_encode($response->json()),
+            'object' => $paginated == true ? (object) $response->paginated_results : $response->object(),
+            'status' => (object) [
+                'code' => $response->status(), // integer
+                'ok' => $response->ok(), // boolean
+                'successful' => $response->successful(), // boolean
+                'failed' => $response->failed(), // boolean
+                'serverError' => $response->serverError(), // boolean
+                'clientError' => $response->clientError(), // boolean
+            ],
+        ];
     }
 
     /**
