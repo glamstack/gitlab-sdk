@@ -306,6 +306,25 @@ class ApiClient
             return $this->handleException($exception, get_class(), $uri);
         }
     }
+
+    /**
+     * Check if pagination is used in the response, and it contains multiple pages
+     *
+     * @param Response $response API response from GitLab.
+     *
+     * @return bool True if the response requires multiple pages | False if response is a single page
+     */
+    public function checkForPagination(Response $response): bool
+    {
+        $headers = $this->convertHeadersToObject($response->headers());
+
+        // Check if X-Total-Pages property exist and if it does the page count is greater than 1.
+        if (property_exists($headers, 'X-Total-Pages') && $headers->{'X-Total-Pages'} > 1) {
+            return true;
+        } else {
+            return false;
+        }
+    }
      *
      * @return object api_response object from BaseService class
      */
