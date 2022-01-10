@@ -8,7 +8,18 @@ use Illuminate\Support\Facades\Http;
 
 class ApiClient
 {
-    public function __construct($instance_key = 'gitlab_com')
+
+    public function __construct(string $instance_key = 'gitlab_com')
+    {
+        // Establish API connection
+        $api_connection = $this->getApiConnectionVariables($instance_key);
+
+        if($api_connection == false) {
+            abort(501, 'The GitLab instance (' . $instance_key . ') is not defined ' .
+                'in config/glamstack-gitlab.php. Without this configuration, ' .
+                'there is no API base URL or API token to connect with.');
+        }
+    }
     {
         // Call BaseService methods to establish API connection
         $this->getApiConnectionVariables($instance_key);
