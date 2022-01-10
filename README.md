@@ -85,6 +85,40 @@ composer require glamstack/gitlab-sdk
 
 > If you are contributing to this package, see `CONTRIBUTING.md` for instructions on configuring a local composer package with symlinks.
 
+### Custom Logging Configuration
+
+By default, we use the `single` channel for all logs that is configured in your application's `config/logging.php` file. This sends all GitLab API log messages to the `storage/logs/laravel.log` file.
+
+If you would like to see GitLab API logs in a separate log file that is easier to triage without unrelated log messages, you can create a custom log channel. For example, we recommend using the value of `glamstack-gitlab`, however you can choose any name you would like.
+
+Add the custom log channel to `config/logging.php`.
+
+```php
+    'channels' => [
+
+        // Add anywhere in the `channels` array
+
+        'glamstack-gitlab' => [
+            'name' => 'glamstack-gitlab',
+            'driver' => 'single',
+            'level' => 'debug',
+            'path' => storage_path('logs/glamstack-gitlab.log'),
+        ],
+    ],
+```
+
+Update the `channels.stack.channels` array to include the array key (ex. `glamstack-gitlab`) of your custom channel. Be sure to add `glamstack-gitlab` to the existing array values and not replace the existing values.
+
+```php
+    'channels' => [
+        'stack' => [
+            'driver' => 'stack',
+            'channels' => ['single','slack', 'glamstack-gitlab'],
+            'ignore_exceptions' => false,
+        ],
+    ],
+```
+
 ## Access Tokens
 
 You need to generate an access token on your GitLab instance and update the appropriate `GITLAB_*_ACCESS_TOKEN` variable in your `.env` file.
