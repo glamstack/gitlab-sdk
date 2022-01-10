@@ -2,11 +2,11 @@
 
 namespace Glamstack\Gitlab;
 
-class ApiClient extends Connection
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 
+class ApiClient
 {
     public function __construct($instance_key = 'gitlab_com')
     {
