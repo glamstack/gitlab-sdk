@@ -522,14 +522,29 @@ class ApiClient
     }
 
     /**
-     * Use GitLab API to delete an resource
+     * Handle GitLab API Exception
      *
-     * @param string $endpoint URI with leading `/` for API resource
+     * @param \Illuminate\Http\Client\RequestException $exception An instance of the exception
      *
-     * @return object api_response object from BaseService class
+     * @param string $log_class get_class()
+     *
+     * @param string $reference Reference slug or identifier
+     *
+     * @return string Error message
      */
-    public function delete($endpoint): object
+    public function handleException($exception, $log_class, $reference)
     {
-        return $this->apiDeleteRequest($endpoint);
+        Log::channel(config('glamstack-gitlab.log_channels'))->error($exception->getMessage(),
+        [
+            'log_event_type' => 'gitlab-api-response-error',
+            'log_class' => $log_class,
+            'error_code' => $exception->getCode(),
+            'error_message' => $exception->getMessage(),
+            'error_reference' => $reference,
+        ]);
+
+        return $exception->getMessage();
     }
+
+
 }
