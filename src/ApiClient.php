@@ -453,6 +453,24 @@ class ApiClient
 
         return $records_array;
     }
+
+    /**
+     * Convert paginated API response array into an object
+     *
+     * @param array $paginatedResponse Combined object returns from multiple pages of
+     * API responses.
+     *
+     * @return object Object of the API responses combined.
+     */
+    public function convertPaginatedResponseToObject(array $paginatedResponse): object
+    {
+        $results = [];
+
+        foreach ($paginatedResponse as $response_key => $response_value) {
+            $results[$response_key] = $response_value;
+        }
+        return (object) $results;
+    }
      *
      * @return object api_response object from BaseService class
      */
