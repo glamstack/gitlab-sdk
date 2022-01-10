@@ -108,12 +108,114 @@ class ApiClient
     }
 
     /**
-     * Use GitLab API to get a resource endpoint.
+     * GitLab API Get Request
      *
-     * @param string $endpoint URI with leading `/` for API resource
+     * Example Usage:
+     * ```php
+     * $gitlab_api = new \Glamstack\Gitlab\ApiClient('gitlab_com');
+     * return $gitlab_api->get('/groups/'.$id);
+     * ```
+     * @param string $uri The URI with leading slash after `/api/v4`
+     *
      * @param array $request_data Optional query data to apply to GET request
      *
-     * @return object api_response object from BaseService class
+     * @return object|string See parseApiResponse() method
+     *
+     * Example Response for /groups/{id}
+     * {
+     *  +"headers": {
+     *    +"Date": "Wed, 10 Nov 2021 15:05:28 GMT"
+     *    +"Content-Type": "application/json"
+     *    +"Content-Length": "1107"
+     *    +"Connection": "keep-alive"
+     *    (truncated)
+     *    +"Server": "cloudflare"
+     *    +"CF-RAY": ""
+     *  }
+     *  +"json": (truncated)
+     *  +"object": {
+     *    +"id": 12345678
+     *    +"web_url": <web_url>
+     *    +"name": <name>
+     *    +"path": <path>
+     *    +"description": <description>
+     *    +"visibility": "public"
+     *    +"share_with_group_lock": false
+     *    +"require_two_factor_authentication": false
+     *    +"two_factor_grace_period": 48
+     *    +"project_creation_level": "maintainer"
+     *    +"auto_devops_enabled": null
+     *    +"subgroup_creation_level": "maintainer"
+     *    +"emails_disabled": false
+     *    +"mentions_disabled": false
+     *    +"lfs_enabled": true
+     *    +"default_branch_protection": 2
+     *    +"avatar_url": <avatar_url>
+     *    +"request_access_enabled": true
+     *    +"full_name": <full_name>
+     *    +"full_path": <full_path>
+     *    +"created_at": <created_at>
+     *    +"parent_id": <parent_id>
+     *    +"ldap_cn": null
+     *    +"ldap_access": null
+     *    +"marked_for_deletion_on": null
+     *    +"shared_with_groups": []
+     *    +"runners_token": <runners_token>
+     *    +"projects": []
+     *    +"shared_projects": []
+     *    +"shared_runners_minutes_limit": null
+     *    +"extra_shared_runners_minutes_limit": null
+     *    +"prevent_forking_outside_group": false
+     *  }
+     *  +"status": {
+     *    +"code": 200
+     *    +"ok": true
+     *    +"successful": true
+     *    +"failed": false
+     *    +"serverError": false
+     *    +"clientError": false
+     *  }
+     * }
+     */
+    public function get(string $uri, array $request_data = []): object|string
+    {
+        //Perform API call
+        try {
+
+            // Utilize HTTP to run a GET request against the base URL with the
+            // URI supplied from the parameter appended to the end.
+            $response = Http::withToken($this->access_token)
+                ->get($this->base_url . $uri, $request_data);
+
+            // If the response is a paginated response
+            if ($this->checkForPagination($response) == true) {
+
+                // Resupply the url for the request to the getPaginatedResults
+                // helper function.
+                $paginated_results = $this->getPaginatedResults($this->base_url . $uri, $request_data);
+
+                // The $paginated_results will be returned as an object of objects
+                // which needs to be converted to a flat object for standardizing
+                // the response returned. This needs to be a separate function
+                // instead of casting to an object due to return body complexities
+                // with nested array and object mixed notation.
+                /** @phpstan-ignore-next-line */
+                $response->paginated_results = $this->convertPaginatedResponseToObject($paginated_results);
+
+                // Unset property for body and json
+                unset($response->body);
+                unset($response->json);
+            }
+            // Parse API Response and convert to returnable object with expected format
+            // The checkForPagination method will return a boolean that is passed.
+            /** @phpstan-ignore-next-line */
+            $parsed_api_response = $this->parseApiResponse($response, $this->checkForPagination($response));
+
+            return $parsed_api_response;
+        } catch (\Illuminate\Http\Client\RequestException $exception) {
+            return $this->handleException($exception, get_class(), $uri);
+        }
+    }
      */
     public function get($endpoint, $request_data = []): object
     {
