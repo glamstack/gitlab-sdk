@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Http;
 
 class ApiClient
 {
+    private string $base_url;
+    private string $access_token;
 
     public function __construct(string $instance_key = 'gitlab_com')
     {
