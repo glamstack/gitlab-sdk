@@ -22,17 +22,15 @@ class ApiClient
         // and/or .env value for this instance base URL.
         $this->access_token = $access_token;
 
+        // Set request headers
+        $this->setRequestHeaders();
+
         // Establish API connection
         $api_connection = $this->setApiConnectionVariables($instance_key);
 
         if ($api_connection == false) {
             abort(501, $this->error_message);
         }
-
-        // Define request headers
-        $this->request_headers = [
-            'User-Agent' => 'glamstack/gitlab-sdk laravel/'.app()->version().' php/'.phpversion()
-        ];
     }
 
     /**
@@ -600,5 +598,34 @@ class ApiClient
             ]);
 
         return $exception->getMessage();
+    }
+
+    /**
+     * Set the request headers for the GitLab API request
+     *
+     * @return void
+     */
+    public function setRequestHeaders() : void
+    {
+        // Get Laravel and PHP Version
+        $laravel = 'laravel/'.app()->version();
+        $php = 'php/'.phpversion();
+
+        // Decode the composer.lock file
+        $composer_lock_json = json_decode(file_get_contents(base_path('composer.lock')), true);
+
+        // Use Laravel collection to search for the package. We will use the
+        // array to get the package name (in case it changes with a fork) and
+        // return the version key. For production, this will show a release
+        // number. In development, this will show the branch name.
+        $composer_package = collect($composer_lock_json['packages'])
+            ->where('name', 'glamstack/gitlab-sdk')
+            ->first();
+        $package = $composer_package['name'].'/'.$composer_package['version'];
+
+        // Define request headers
+        $this->request_headers = [
+            'User-Agent' => $package.' '.$laravel.' '.$php
+        ];
     }
 }
