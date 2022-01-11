@@ -537,12 +537,12 @@ class ApiClient
             'json' => $paginated == true ? json_encode($response->paginated_results) : json_encode($response->json()),
             'object' => $paginated == true ? (object) $response->paginated_results : $response->object(),
             'status' => (object) [
-                'code' => $response->status(), // integer
-                'ok' => $response->ok(), // boolean
-                'successful' => $response->successful(), // boolean
-                'failed' => $response->failed(), // boolean
-                'serverError' => $response->serverError(), // boolean
-                'clientError' => $response->clientError(), // boolean
+                'code' => $response->status(),
+                'ok' => $response->ok(),
+                'successful' => $response->successful(),
+                'failed' => $response->failed(),
+                'serverError' => $response->serverError(),
+                'clientError' => $response->clientError(),
             ],
         ];
     }
