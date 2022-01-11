@@ -660,7 +660,7 @@ class ApiClient
         $php = 'php/'.phpversion();
 
         // Decode the composer.lock file
-        $composer_lock_json = json_decode(file_get_contents(base_path('composer.lock')), true);
+        $composer_lock_json = json_decode((string) file_get_contents(base_path('composer.lock')), true);
 
         // Use Laravel collection to search for the package. We will use the
         // array to get the package name (in case it changes with a fork) and
