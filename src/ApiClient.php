@@ -231,7 +231,10 @@ class ApiClient
      * Example Usage:
      * ```php
      * $gitlab_api = new \Glamstack\Gitlab\ApiClient('gitlab_com');
-     * return $gitlab_api->post('/users/'.$id.'/unblock');
+     * return $gitlab_api->post('/projects', [
+     *      'name' => 'My Cool Project',
+     *      'path' => 'my-cool-project'
+     * ]);
      * ```
      *
      * @param string $uri The URI with leading slash after `/api/v4`
@@ -260,18 +263,20 @@ class ApiClient
 
     /**
      * GitLab API PUT Request
-     * This method is called from other services to perform a POST request and
+     * This method is called from other services to perform a PUT request and
      * return a structured object.
      *
      * Example Usage:
      * ```php
      * $gitlab_api = new \Glamstack\Gitlab\ApiClient('gitlab_com');
-     * return $gitlab_api->put('/user/status', $status_array);
+     * return $gitlab_api->put('/projects/12345678', [
+     *      'description' => 'This is an updated project description'
+     * ]);
      * ```
      *
      * @param string $uri The URI with leading slash after `/api/v4`
      *
-     * @param array $request_data Optional request data to send with POST request
+     * @param array $request_data Optional request data to send with PUT request
      *
      * @return object|string
      */
