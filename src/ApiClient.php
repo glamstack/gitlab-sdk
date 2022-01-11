@@ -21,6 +21,10 @@ class ApiClient
         // Set access token property using custom access token or null value
         // If not null, this will override the config/glamstack-gitlab.php
         // and/or .env value for this instance base URL.
+        //
+        // Due to low number of Unauthenticated Endpoints for the GitLab API
+        // this package will require an API token. Doing so makes the code
+        // easier to create.
         $this->instance_key = $instance_key;
         $this->access_token = $access_token;
 
