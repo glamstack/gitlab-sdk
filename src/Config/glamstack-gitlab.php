@@ -5,23 +5,25 @@ return [
     /**
      * Log Channel Name
      * ------------------------------------------------------------------------
-     * Throughout the SDK, we use the config('glamstack-gitlab.log_channel') 
-     * variable to allow you to set the log channel that you want API logs 
-     * to be sent to.
-     * 
-     * If you leave this at the value of `single`, all API call logs will be 
-     * sent to the default log file for Laravel that you have configured 
+     * Throughout the SDK, we use the config('glamstack-gitlab.log_channels')
+     * array variable to allow you to set the log channels (custom log stack)
+     * that you want API logs to be sent to.
+     *
+     * If you leave this at the value of `['single']`, all API call logs will
+     * be sent to the default log file for Laravel that you have configured
      * in config/logging.php which is usually storage/logs/laravel.log.
-     * 
-     * If you would like to see GitLab API logs in a separate log file that 
-     * is easier to triage without unrelated log messages, you can create a 
-     * custom log channel. For example, we recommend using the value of 
-     * `glamstack-gitlab`, however you can choose any name you would like.
-     * 
-     * See the README.md Custom Logging Configuration section for more 
-     * details on creating a new log channel and adding the channel to your 
-     * logging stack channel.
-     * 
+     *
+     * If you would like to see GitLab API logs in a separate log file that
+     * is easier to triage without unrelated log messages, you can create a
+     * custom log channel and add the channel name to the array. For example,
+     * we recommend creating a custom channel the name `glamstack-gitlab`,
+     * however you can choose any name you would like.
+     * Ex. ['single', 'glamstack-gitlab']
+     *
+     * You can also add additional channels that should be logged to (ex. slack).
+     * Ex. ['single', 'glamstack-gitlab', 'slack']
+     *
+     * https://laravel.com/docs/8.x/logging
      */
 
     'log_channels' => ['single'],
