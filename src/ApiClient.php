@@ -597,8 +597,6 @@ class ApiClient
     /**
      * Create an info log entry for an API call
      *
-     * @param \Illuminate\Http\Client\RequestException $exception An instance of the exception
-     *
      * @param string $method The lowercase name of the method that calls this function (ex. `get`)
      *
      * @param string $endpoint The URL of the API call including the concatenated base URL and URI
@@ -607,7 +605,7 @@ class ApiClient
      *
      * @return void
      */
-    public function logInfo($method, $endpoint, $status_code) : void
+    public function logInfo(string $method, string $endpoint, string $status_code) : void
     {
         $info_message = Str::upper($method).' '.$status_code.' '.$endpoint;
 
