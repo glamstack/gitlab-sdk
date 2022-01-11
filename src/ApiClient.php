@@ -9,9 +9,11 @@ use Illuminate\Support\Str;
 
 class ApiClient
 {
+    private ?string $error_message;
     private string $base_url;
-    private string $access_token;
-    private array $request_headers;
+    private ?string $access_token;
+    private ?array $request_headers;
+    private string $gitlab_version;
 
     public function __construct(string $instance_key = 'gitlab_com', string $access_token = null)
     {
