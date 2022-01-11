@@ -113,6 +113,21 @@ class ApiClient
         return true;
     }
 
+
+    /**
+     * Test the connection to the GitLab instance and get the version
+     *
+     * @see https://docs.gitlab.com/ee/api/version.html
+     *
+     * @return void
+     */
+    public function testConnection()
+    {
+        $response = $this->get('/version')->object;
+
+        $this->gitlab_version = $response->version;
+    }
+
     /**
      * GitLab API Get Request
      *
