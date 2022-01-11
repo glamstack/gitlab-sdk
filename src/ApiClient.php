@@ -74,7 +74,7 @@ class ApiClient
                 'connect with. You can configure the base URL in ' .
                 'config/glamstack-gitlab.php or .env file.';
 
-            Log::channel(config('glamstack-gitlab.log_channels'))
+            Log::stack(config('glamstack-gitlab.log_channels'))
                 ->critical($this->error_message, [
                     'log_event_type' => 'gitlab-api-config-missing-error',
                     'log_class' => get_class(),
@@ -100,8 +100,8 @@ class ApiClient
                 'perform API calls to public endpoints without an access ' .
                 'token, however you may see unexpected permission errors.';
 
-            Log::channel(config('glamstack-gitlab.log_channels'))
                 ->warning($error_message, [
+            Log::stack(config('glamstack-gitlab.log_channels'))
                     'log_event_type' => 'gitlab-api-config-missing-warning',
                     'log_class' => get_class(),
                     'error_code' => '501',
@@ -583,7 +583,7 @@ class ApiClient
     {
         $info_message = Str::upper($method).' '.$status_code.' '.$endpoint;
 
-        Log::channel(config('glamstack-gitlab.log_channels'))
+        Log::stack(config('glamstack-gitlab.log_channels'))
             ->info($info_message, [
                 'log_event_type' => 'gitlab-api-response-info',
                 'log_class' => get_class(),
@@ -607,7 +607,7 @@ class ApiClient
      */
     public function handleException($exception, $log_class, $reference)
     {
-        Log::channel(config('glamstack-gitlab.log_channels'))
+        Log::stack(config('glamstack-gitlab.log_channels'))
             ->error($exception->getMessage(), [
                 'log_event_type' => 'gitlab-api-response-error',
                 'log_class' => $log_class,
