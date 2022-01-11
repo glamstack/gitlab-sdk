@@ -31,6 +31,9 @@ class ApiClient
         if ($api_connection == false) {
             abort(501, $this->error_message);
         }
+
+        // Test API Connection and set $gitlab_version property for logs
+        $this->testConnection();
     }
 
     /**
