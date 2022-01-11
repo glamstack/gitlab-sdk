@@ -590,6 +590,7 @@ class ApiClient
                 'info_code' => $status_code,
                 'info_method' => Str::upper($method),
                 'info_endpoint' => $endpoint,
+                'gitlab_version' => $this->gitlab_version,
             ]);
     }
 
@@ -613,6 +614,7 @@ class ApiClient
                 'error_code' => $exception->getCode(),
                 'error_message' => $exception->getMessage(),
                 'error_reference' => $reference,
+                'gitlab_version' => $this->gitlab_version,
             ]);
 
         return $exception->getMessage();
