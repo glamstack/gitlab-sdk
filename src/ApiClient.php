@@ -475,6 +475,7 @@ class ApiClient
 
             // Get list of records for current page
             $records_page = Http::withToken($this->access_token)
+                ->withHeaders($this->request_headers)
                 ->get($endpoint, $request_body);
 
             // Add API data to array with final result
