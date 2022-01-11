@@ -609,9 +609,9 @@ class ApiClient
             ->info($info_message, [
                 'log_event_type' => 'gitlab-api-response-info',
                 'log_class' => get_class(),
-                'info_code' => $status_code,
-                'info_method' => Str::upper($method),
-                'info_endpoint' => $endpoint,
+                'api_code' => $status_code,
+                'api_method' => Str::upper($method),
+                'api_endpoint' => $endpoint,
                 'gitlab_version' => $this->gitlab_version,
             ]);
     }
