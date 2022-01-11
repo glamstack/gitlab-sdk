@@ -26,11 +26,7 @@ class ApiClient
         $api_connection = $this->setApiConnectionVariables($instance_key);
 
         if ($api_connection == false) {
-            $error_message = 'The GitLab instance (' . $instance_key . ') is ' .
-                'not defined in config/glamstack-gitlab.php. Without this ' .
-                'array, there is no API Base URL or API Access Token to use.';
-
-            abort(501, $error_message);
+            abort(501, $this->error_message);
         }
 
         // Define request headers
@@ -51,16 +47,16 @@ class ApiClient
         // Get the instance configuration from config/glamstack-gitlab.php array
         /** @phpstan-ignore-next-line */
         if (!array_key_exists($instance_key, config('glamstack-gitlab'))) {
-            $error_message = 'The GitLab instance key is not defined in ' .
+            $this->error_message = 'The GitLab instance key is not defined in ' .
                 'config/glamstack-gitlab.php. Without this array config, ' .
                 'there is no API Base URL or API Access Token to connect with.';
 
             Log::stack(config('glamstack-gitlab.log_channels'))
-                ->critical($error_message, [
+                ->critical($this->error_message, [
                     'log_event_type' => 'gitlab-api-config-missing-error',
                     'log_class' => get_class(),
                     'error_code' => '501',
-                    'error_message' => $error_message,
+                    'error_message' => $this->error_message,
                     'error_reference' => $instance_key,
                 ]);
 
@@ -72,17 +68,17 @@ class ApiClient
         if (config('glamstack-gitlab.'.$instance_key.'.base_url') == null) {
             $this->base_url = config('glamstack-gitlab.'.$instance_key.'.base_url') . '/api/v4';
         } else {
-            $error_message = 'The GitLab base URL for instance key is null. ' .
+            $this->error_message = 'The GitLab base URL for instance key is null. ' .
                 'Without this configuration, there is no API base URL to ' .
                 'connect with. You can configure the base URL in ' .
                 'config/glamstack-gitlab.php or .env file.';
 
             Log::channel(config('glamstack-gitlab.log_channels'))
-                ->critical($error_message, [
+                ->critical($this->error_message, [
                     'log_event_type' => 'gitlab-api-config-missing-error',
                     'log_class' => get_class(),
                     'error_code' => '501',
-                    'error_message' => $error_message,
+                    'error_message' => $this->error_message,
                     'error_reference' => $instance_key,
                 ]);
 
