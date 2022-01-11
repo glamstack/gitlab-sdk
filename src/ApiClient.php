@@ -422,9 +422,11 @@ class ApiClient
     public function convertHeadersToObject(array $header_response): object
     {
         $headers = [];
+
         foreach ($header_response as $header_key => $header_value) {
             $headers[$header_key] = implode(" ", $header_value);
         }
+
         return (object) $headers;
     }
 
