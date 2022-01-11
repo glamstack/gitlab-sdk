@@ -310,15 +310,17 @@ class ApiClient
      *
      * @param string $uri The URI with leading slash after `/api/v4`
      *
+     * @param array $request_data Optional request data to send with DELETE request
+     *
      * @return object|string
      */
-    public function delete(string $uri): object|string
+    public function delete(string $uri, array $request_data = []): object|string
     {
         //Perform API call
         try {
-                ->delete($this->base_url . $uri);
             $request = Http::withToken($this->access_token)
                 ->withHeaders($this->request_headers)
+                ->delete($this->base_url . $uri, $request_data);
 
             $response = $this->parseApiResponse($request);
 
