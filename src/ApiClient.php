@@ -94,18 +94,18 @@ class ApiClient
         } elseif (config('glamstack-gitlab.' . $this->instance_key . '.access_token') != null) {
             $this->access_token = config('glamstack-gitlab.' . $this->instance_key . '.access_token');
         } else {
-            $error_message = 'The GitLab access token for instance key is ' .
+            $this->error_message = 'The GitLab access token for instance key is ' .
                 'null. Without this configuration, there is no API token to ' .
                 'use for authenticated API requests. It is still possible to ' .
                 'perform API calls to public endpoints without an access ' .
                 'token, however you may see unexpected permission errors.';
 
-                ->warning($error_message, [
             Log::stack(config('glamstack-gitlab.log_channels'))
+                ->warning($this->error_message, [
                     'log_event_type' => 'gitlab-api-config-missing-warning',
                     'log_class' => get_class(),
                     'error_code' => '501',
-                    'error_message' =>  $error_message,
+                    'error_message' =>  $this->error_message,
                     'error_reference' => $this->instance_key,
                 ]);
         }
