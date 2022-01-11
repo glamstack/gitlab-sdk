@@ -11,6 +11,7 @@ class ApiClient
 {
     private string $base_url;
     private string $access_token;
+    private array $request_headers;
 
     public function __construct(string $instance_key = 'gitlab_com')
     {
@@ -22,6 +23,11 @@ class ApiClient
                 'in config/glamstack-gitlab.php. Without this configuration, ' .
                 'there is no API base URL or API token to connect with.');
         }
+
+        // Define request headers
+        $this->request_headers = [
+            'User-Agent' => 'glamstack/gitlab-sdk laravel/'.app()->version().' php/'.phpversion()
+        ];
     }
 
     /**
@@ -186,6 +192,7 @@ class ApiClient
             // Utilize HTTP to run a GET request against the base URL with the
             // URI supplied from the parameter appended to the end.
             $response = Http::withToken($this->access_token)
+                ->withHeaders($this->request_headers)
                 ->get($this->base_url . $uri, $request_data);
 
             // If the response is a paginated response
@@ -240,6 +247,7 @@ class ApiClient
         //Perform API call
         try {
             $response = Http::withToken($this->access_token)
+                ->withHeaders($this->request_headers)
                 ->post($this->base_url . $uri, $request_data);
 
             // Parse API Response and convert to returnable object with expected format
@@ -271,6 +279,7 @@ class ApiClient
         //Perform API call
         try {
             $response = Http::withToken($this->access_token)
+                ->withHeaders($this->request_headers)
                 ->put($this->base_url . $uri, $request_data);
 
             // Parse API Response and convert to returnable object with expected format
@@ -300,6 +309,7 @@ class ApiClient
         try {
             $response = Http::withToken($this->access_token)
                 ->delete($this->base_url . $uri);
+                ->withHeaders($this->request_headers)
 
             // Parse API Response and convert to returnable object with expected format
             return $this->parseApiResponse($response);
@@ -424,6 +434,7 @@ class ApiClient
 
         // Get a list of records
         $records = Http::withToken($this->access_token)
+            ->withHeaders($this->request_headers)
             ->get($endpoint, $request_body);
 
         // Get total page count from header array
