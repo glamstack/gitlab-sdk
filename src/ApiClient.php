@@ -22,9 +22,11 @@ class ApiClient
         $api_connection = $this->setApiConnectionVariables($instance_key);
 
         if ($api_connection == false) {
-            abort(501, 'The GitLab instance (' . $instance_key . ') is not ' .
-                'defined in config/glamstack-gitlab.php. Without this array ' .
-                'config, there is no API Base URL or API Access Token to use.');
+            $error_message = 'The GitLab instance (' . $instance_key . ') is ' .
+                'not defined in config/glamstack-gitlab.php. Without this ' .
+                'array, there is no API Base URL or API Access Token to use.';
+
+            abort(501, $error_message);
         }
 
         // Define request headers
