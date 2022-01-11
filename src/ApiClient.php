@@ -13,8 +13,11 @@ class ApiClient
     private string $access_token;
     private array $request_headers;
 
-    public function __construct(string $instance_key = 'gitlab_com')
+    public function __construct(string $instance_key = 'gitlab_com', string $access_token = null)
     {
+        // Set access token property using custom access token or null value
+        $this->access_token = $access_token;
+
         // Establish API connection
         $api_connection = $this->getApiConnectionVariables($instance_key);
 
