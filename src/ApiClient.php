@@ -66,7 +66,7 @@ class ApiClient
 
         // Check if the Base URL has been configured in the instance_key array
         // in config/glamstack-gitlab.php and/or the .env file
-        if (config('glamstack-gitlab.'.$instance_key.'.base_url') == null) {
+        if (config('glamstack-gitlab.'.$instance_key.'.base_url') != null) {
             $this->base_url = config('glamstack-gitlab.'.$instance_key.'.base_url') . '/api/v4';
         } else {
             $this->error_message = 'The GitLab base URL for instance key is null. ' .
