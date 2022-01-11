@@ -664,9 +664,11 @@ class ApiClient
         // array to get the package name (in case it changes with a fork) and
         // return the version key. For production, this will show a release
         // number. In development, this will show the branch name.
+        /** @phpstan-ignore-next-line */
         $composer_package = collect($composer_lock_json['packages'])
             ->where('name', 'glamstack/gitlab-sdk')
             ->first();
+        /** @phpstan-ignore-next-line */
         $package = $composer_package['name'].'/'.$composer_package['version'];
 
         // Define request headers
