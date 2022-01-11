@@ -16,6 +16,8 @@ class ApiClient
     public function __construct(string $instance_key = 'gitlab_com', string $access_token = null)
     {
         // Set access token property using custom access token or null value
+        // If not null, this will override the config/glamstack-gitlab.php
+        // and/or .env value for this instance base URL.
         $this->access_token = $access_token;
 
         // Establish API connection
@@ -503,6 +505,8 @@ class ApiClient
     /**
      * Parse the API response and return custom formatted response for consistency
      *
+     * @see https://laravel.com/docs/8.x/http-client#making-requests
+     *
      * @param object $response Response object from API results
      *
      * @param false $paginated If the response is paginated or not
@@ -550,7 +554,7 @@ class ApiClient
     }
 
     /**
-     * Create a info log entry for an API call
+     * Create an info log entry for an API call
      *
      * @param \Illuminate\Http\Client\RequestException $exception An instance of the exception
      *
