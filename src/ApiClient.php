@@ -186,7 +186,6 @@ class ApiClient
      */
     public function get(string $uri, array $request_data = []): object|string
     {
-        //Perform API call
         try {
 
             // Utilize HTTP to run a GET request against the base URL with the
@@ -249,7 +248,6 @@ class ApiClient
      */
     public function post(string $uri, array $request_data = []): object|string
     {
-        //Perform API call
         try {
             $request = Http::withToken($this->access_token)
                 ->withHeaders($this->request_headers)
@@ -286,7 +284,6 @@ class ApiClient
      */
     public function put(string $uri, array $request_data = []): object|string
     {
-        //Perform API call
         try {
             $request = Http::withToken($this->access_token)
                 ->withHeaders($this->request_headers)
@@ -320,7 +317,6 @@ class ApiClient
      */
     public function delete(string $uri, array $request_data = []): object|string
     {
-        //Perform API call
         try {
             $request = Http::withToken($this->access_token)
                 ->withHeaders($this->request_headers)
