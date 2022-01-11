@@ -123,9 +123,31 @@ class ApiClient
      */
     public function testConnection()
     {
-        $response = $this->get('/version')->object;
+        // Set version to null before making first GET request
+        $this->gitlab_version = null;
 
-        $this->gitlab_version = $response->version;
+        // API call to get version from GitLab instance
+        $response = $this->get('/version');
+
+        if ($response->status->code == 200) {
+            $this->gitlab_version = $response->object->version;
+        } elseif ($response->status->code == 401) {
+            $error_message = 'The GitLab access token for instance key is ' .
+                'null. Without this configuration, the logs will not contain ' .
+                'the GitLab Version number since the /api/v4/version endpoint ' .
+                'is only available for authenticated users.';
+
+            Log::stack(config('glamstack-gitlab.log_channels'))
+                ->warning($error_message, [
+                    'log_event_type' => 'gitlab-api-config-limitation-warning',
+                    'log_class' => get_class(),
+                    'error_code' => '401',
+                    'error_message' =>  $error_message,
+                    'error_reference' => $this->instance_key,
+                ]);
+        } else {
+            // Any other error messages will be caught by handleException
+        }
     }
 
     /**
