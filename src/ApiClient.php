@@ -19,7 +19,7 @@ class ApiClient
         $this->access_token = $access_token;
 
         // Establish API connection
-        $api_connection = $this->getApiConnectionVariables($instance_key);
+        $api_connection = $this->setApiConnectionVariables($instance_key);
 
         if($api_connection == false) {
             abort(501, 'The GitLab instance (' . $instance_key . ') is not defined ' .
@@ -40,7 +40,7 @@ class ApiClient
      *
      * @return bool
      */
-    public function getApiConnectionVariables(string $instance_key): bool
+    public function setApiConnectionVariables(string $instance_key): bool
     {
         // Get the instance configuration from config/glamstack-gitlab.php array
         /** @phpstan-ignore-next-line */
