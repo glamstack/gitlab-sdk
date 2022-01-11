@@ -16,11 +16,11 @@ return [
      * If you would like to see GitLab API logs in a separate log file that
      * is easier to triage without unrelated log messages, you can create a
      * custom log channel and add the channel name to the array. For example,
-     * we recommend creating a custom channel the name `glamstack-gitlab`,
+     * we recommend creating a custom channel with the name `glamstack-gitlab`,
      * however you can choose any name you would like.
      * Ex. ['single', 'glamstack-gitlab']
      *
-     * You can also add additional channels that should be logged to (ex. slack).
+     * You can also add additional channels that logs should be sent to.
      * Ex. ['single', 'glamstack-gitlab', 'slack']
      *
      * https://laravel.com/docs/8.x/logging
