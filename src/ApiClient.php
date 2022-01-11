@@ -58,7 +58,7 @@ class ApiClient
                 'config/glamstack-gitlab.php. Without this array config, ' .
                 'there is no API Base URL or API Access Token to connect with.';
 
-            Log::stack(config('glamstack-gitlab.log_channels'))
+            Log::stack((array) config('glamstack-gitlab.log_channels'))
                 ->critical($this->error_message, [
                     'log_event_type' => 'gitlab-api-config-missing-error',
                     'log_class' => get_class(),
@@ -80,7 +80,7 @@ class ApiClient
                 'connect with. You can configure the base URL in ' .
                 'config/glamstack-gitlab.php or .env file.';
 
-            Log::stack(config('glamstack-gitlab.log_channels'))
+            Log::stack((array) config('glamstack-gitlab.log_channels'))
                 ->critical($this->error_message, [
                     'log_event_type' => 'gitlab-api-config-missing-error',
                     'log_class' => get_class(),
@@ -106,7 +106,7 @@ class ApiClient
                 'perform API calls to public endpoints without an access ' .
                 'token, however you may see unexpected permission errors.';
 
-            Log::stack(config('glamstack-gitlab.log_channels'))
+            Log::stack((array) config('glamstack-gitlab.log_channels'))
                 ->warning($this->error_message, [
                     'log_event_type' => 'gitlab-api-config-missing-warning',
                     'log_class' => get_class(),
@@ -143,7 +143,7 @@ class ApiClient
                 'the GitLab Version number since the /api/v4/version endpoint ' .
                 'is only available for authenticated users.';
 
-            Log::stack(config('glamstack-gitlab.log_channels'))
+            Log::stack((array) config('glamstack-gitlab.log_channels'))
                 ->warning($error_message, [
                     'log_event_type' => 'gitlab-api-config-limitation-warning',
                     'log_class' => get_class(),
@@ -611,7 +611,7 @@ class ApiClient
     {
         $info_message = Str::upper($method).' '.$status_code.' '.$endpoint;
 
-        Log::stack(config('glamstack-gitlab.log_channels'))
+        Log::stack((array) config('glamstack-gitlab.log_channels'))
             ->info($info_message, [
                 'log_event_type' => 'gitlab-api-response-info',
                 'log_class' => get_class(),
@@ -635,7 +635,7 @@ class ApiClient
      */
     public function handleException($exception, $log_class, $reference)
     {
-        Log::stack(config('glamstack-gitlab.log_channels'))
+        Log::stack((array) config('glamstack-gitlab.log_channels'))
             ->error($exception->getMessage(), [
                 'log_event_type' => 'gitlab-api-response-error',
                 'log_class' => $log_class,
