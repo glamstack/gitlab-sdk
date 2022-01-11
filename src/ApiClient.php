@@ -12,6 +12,7 @@ class ApiClient
     private ?string $access_token;
     private ?string $base_url;
     private ?string $error_message;
+    private ?string $instance_key;
     private ?string $gitlab_version;
     private ?array $request_headers;
 
@@ -20,13 +21,14 @@ class ApiClient
         // Set access token property using custom access token or null value
         // If not null, this will override the config/glamstack-gitlab.php
         // and/or .env value for this instance base URL.
+        $this->instance_key = $instance_key;
         $this->access_token = $access_token;
 
         // Set request headers
         $this->setRequestHeaders();
 
         // Establish API connection
-        $api_connection = $this->setApiConnectionVariables($instance_key);
+        $api_connection = $this->setApiConnectionVariables($this->instance_key);
 
         if ($api_connection == false) {
             abort(501, $this->error_message);
@@ -39,15 +41,13 @@ class ApiClient
     /**
      * Set the URL and access token used for GitLab API calls.
      *
-     * @param string $instance_key The key of the array in config/glamstack-gitlab.php
-     *
      * @return bool
      */
-    public function setApiConnectionVariables(string $instance_key): bool
+    public function setApiConnectionVariables(): bool
     {
         // Get the instance configuration from config/glamstack-gitlab.php array
         /** @phpstan-ignore-next-line */
-        if (!array_key_exists($instance_key, config('glamstack-gitlab'))) {
+        if (!array_key_exists($this->instance_key, config('glamstack-gitlab'))) {
             $this->error_message = 'The GitLab instance key is not defined in ' .
                 'config/glamstack-gitlab.php. Without this array config, ' .
                 'there is no API Base URL or API Access Token to connect with.';
@@ -58,7 +58,7 @@ class ApiClient
                     'log_class' => get_class(),
                     'error_code' => '501',
                     'error_message' => $this->error_message,
-                    'error_reference' => $instance_key,
+                    'error_reference' => $this->instance_key,
                 ]);
 
             return false;
@@ -66,8 +66,8 @@ class ApiClient
 
         // Check if the Base URL has been configured in the instance_key array
         // in config/glamstack-gitlab.php and/or the .env file
-        if (config('glamstack-gitlab.'.$instance_key.'.base_url') != null) {
-            $this->base_url = config('glamstack-gitlab.'.$instance_key.'.base_url') . '/api/v4';
+        if (config('glamstack-gitlab.' . $this->instance_key . '.base_url') != null) {
+            $this->base_url = config('glamstack-gitlab.' . $this->instance_key . '.base_url') . '/api/v4';
         } else {
             $this->error_message = 'The GitLab base URL for instance key is null. ' .
                 'Without this configuration, there is no API base URL to ' .
@@ -80,7 +80,7 @@ class ApiClient
                     'log_class' => get_class(),
                     'error_code' => '501',
                     'error_message' => $this->error_message,
-                    'error_reference' => $instance_key,
+                    'error_reference' => $this->instance_key,
                 ]);
 
             return false;
@@ -91,8 +91,8 @@ class ApiClient
         // option is for users to provide an access token in __construct().
         if ($this->access_token != null) {
             // No changes since access token has been set in construct method
-        } elseif (config('glamstack-gitlab'.$instance_key.'access_token') != null) {
-            $this->access_token = config('glamstack-gitlab.'.$instance_key.'.access_token');
+        } elseif (config('glamstack-gitlab.' . $this->instance_key . '.access_token') != null) {
+            $this->access_token = config('glamstack-gitlab.' . $this->instance_key . '.access_token');
         } else {
             $error_message = 'The GitLab access token for instance key is ' .
                 'null. Without this configuration, there is no API token to ' .
@@ -106,7 +106,7 @@ class ApiClient
                     'log_class' => get_class(),
                     'error_code' => '501',
                     'error_message' =>  $error_message,
-                    'error_reference' => $instance_key,
+                    'error_reference' => $this->instance_key,
                 ]);
         }
 
