@@ -26,18 +26,20 @@ class ApiClient
         // this package will require an API token. Doing so makes the code
         // easier to create.
         $this->instance_key = $instance_key;
-        $this->access_token = $access_token;
 
         // Set request headers
         $this->setRequestHeaders();
 
         // Establish API connection
-        $api_connection = $this->setApiConnectionVariables($this->instance_key);
+        $api_connection = $this->setApiConnectionVariables();
 
         if ($api_connection == false) {
             abort(501, $this->error_message);
         }
 
+        if($access_token != null){
+            $this->access_token = $access_token;
+        }
         // Test API Connection and set $gitlab_version property for logs
         $this->testConnection();
     }
