@@ -587,17 +587,15 @@ class ApiClient
      */
     public function handleException($exception, $log_class, $reference)
     {
-        Log::channel(config('glamstack-gitlab.log_channels'))->error($exception->getMessage(),
-        [
-            'log_event_type' => 'gitlab-api-response-error',
-            'log_class' => $log_class,
-            'error_code' => $exception->getCode(),
-            'error_message' => $exception->getMessage(),
-            'error_reference' => $reference,
-        ]);
+        Log::channel(config('glamstack-gitlab.log_channels'))
+            ->error($exception->getMessage(), [
+                'log_event_type' => 'gitlab-api-response-error',
+                'log_class' => $log_class,
+                'error_code' => $exception->getCode(),
+                'error_message' => $exception->getMessage(),
+                'error_reference' => $reference,
+            ]);
 
         return $exception->getMessage();
     }
-
-
 }
