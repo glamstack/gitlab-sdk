@@ -20,6 +20,9 @@ parameters:
         - '#Call to an undefined method object::serverError\(\)#'
         - '#Call to an undefined method object::clientError\(\)#'
         - '#Access to an undefined property object::\$paginated_results#'
+        - '#Cannot access property \$status on object\|string#'
+        - '#Cannot access property \$object on object\|string#'
+        - '#Access to an undefined property object::\$status#'
     excludePaths:
         - ./*/*/FileToBeExcluded.php
 
