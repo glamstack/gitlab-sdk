@@ -219,6 +219,8 @@ class ApiClient
             /** @phpstan-ignore-next-line */
             $parsed_api_response = $this->parseApiResponse($response, $this->checkForPagination($response));
 
+            $this->logInfo('get', $this->base_url . $uri, $parsed_api_response->status->code);
+
             return $parsed_api_response;
         } catch (\Illuminate\Http\Client\RequestException $exception) {
             return $this->handleException($exception, get_class(), $uri);
@@ -246,12 +248,15 @@ class ApiClient
     {
         //Perform API call
         try {
-            $response = Http::withToken($this->access_token)
+            $request = Http::withToken($this->access_token)
                 ->withHeaders($this->request_headers)
                 ->post($this->base_url . $uri, $request_data);
 
-            // Parse API Response and convert to returnable object with expected format
-            return $this->parseApiResponse($response);
+            $response = $this->parseApiResponse($request);
+
+            $this->logInfo('post', $this->base_url . $uri, $response->status->code);
+
+            return $response;
         } catch (\Illuminate\Http\Client\RequestException $exception) {
             return $this->handleException($exception, get_class(), $uri);
         }
@@ -278,12 +283,15 @@ class ApiClient
     {
         //Perform API call
         try {
-            $response = Http::withToken($this->access_token)
+            $request = Http::withToken($this->access_token)
                 ->withHeaders($this->request_headers)
                 ->put($this->base_url . $uri, $request_data);
 
-            // Parse API Response and convert to returnable object with expected format
-            return $this->parseApiResponse($response);
+            $response = $this->parseApiResponse($request);
+
+            $this->logInfo('put', $this->base_url . $uri, $response->status->code);
+
+            return $response;
         } catch (\Illuminate\Http\Client\RequestException $exception) {
             return $this->handleException($exception, get_class(), $uri);
         }
@@ -307,12 +315,15 @@ class ApiClient
     {
         //Perform API call
         try {
-            $response = Http::withToken($this->access_token)
                 ->delete($this->base_url . $uri);
+            $request = Http::withToken($this->access_token)
                 ->withHeaders($this->request_headers)
 
-            // Parse API Response and convert to returnable object with expected format
-            return $this->parseApiResponse($response);
+            $response = $this->parseApiResponse($request);
+
+            $this->logInfo('delete', $this->base_url . $uri, $response->status->code);
+
+            return $response;
         } catch (\Illuminate\Http\Client\RequestException $exception) {
             return $this->handleException($exception, get_class(), $uri);
         }
@@ -531,6 +542,33 @@ class ApiClient
                 'clientError' => $response->clientError(), // boolean
             ],
         ];
+    }
+
+    /**
+     * Create a info log entry for an API call
+     *
+     * @param \Illuminate\Http\Client\RequestException $exception An instance of the exception
+     *
+     * @param string $method The lowercase name of the method that calls this function (ex. `get`)
+     *
+     * @param string $endpoint The URL of the API call including the concatenated base URL and URI
+     *
+     * @param string $status_code The HTTP response status code (ex. `200`)
+     *
+     * @return void
+     */
+    public function logInfo($method, $endpoint, $status_code) : void
+    {
+        $info_message = Str::upper($method).' '.$status_code.' '.$endpoint;
+
+        Log::channel(config('glamstack-gitlab.log_channels'))
+            ->info($info_message, [
+                'log_event_type' => 'gitlab-api-response-info',
+                'log_class' => get_class(),
+                'info_code' => $status_code,
+                'info_method' => Str::upper($method),
+                'info_endpoint' => $endpoint,
+            ]);
     }
 
     /**
