@@ -58,11 +58,11 @@ class ApiClient
 
             Log::stack((array) config('glamstack-gitlab.log_channels'))
                 ->critical($this->error_message, [
-                    'log_event_type' => 'gitlab-api-config-missing-error',
-                    'log_class' => get_class(),
-                    'error_code' => '501',
                     'error_message' => $this->error_message,
                     'error_reference' => $this->instance_key,
+                    'event_type' => 'gitlab-api-config-missing-error',
+                    'class' => get_class(),
+                    'status_code' => '501',
                 ]);
 
             return false;
@@ -80,11 +80,11 @@ class ApiClient
 
             Log::stack((array) config('glamstack-gitlab.log_channels'))
                 ->critical($this->error_message, [
-                    'log_event_type' => 'gitlab-api-config-missing-error',
-                    'log_class' => get_class(),
-                    'error_code' => '501',
                     'error_message' => $this->error_message,
                     'error_reference' => $this->instance_key,
+                    'event_type' => 'gitlab-api-config-missing-error',
+                    'class' => get_class(),
+                    'status_code' => '501',
                 ]);
 
             return false;
@@ -627,10 +627,10 @@ class ApiClient
         $info_message = Str::upper($method).' '.$status_code.' '.$endpoint;
 
         Log::stack((array) config('glamstack-gitlab.log_channels'))
-            ->info($info_message, [
-                'log_event_type' => 'gitlab-api-response-info',
-                'log_class' => get_class(),
-                'api_code' => $status_code,
+            ->info($message, [
+                'event_type' => 'gitlab-api-response-info',
+                'class' => get_class(),
+                'status_code' => $status_code,
                 'api_method' => Str::upper($method),
                 'api_endpoint' => $endpoint,
                 'gitlab_version' => $this->gitlab_version,
@@ -652,11 +652,11 @@ class ApiClient
     {
         Log::stack((array) config('glamstack-gitlab.log_channels'))
             ->error($exception->getMessage(), [
-                'log_event_type' => 'gitlab-api-response-error',
-                'log_class' => $log_class,
-                'error_code' => $exception->getCode(),
                 'error_message' => $exception->getMessage(),
                 'error_reference' => $reference,
+                'event_type' => 'gitlab-api-response-error',
+                'class' => $log_class,
+                'status_code' => $exception->getCode(),
                 'gitlab_version' => $this->gitlab_version,
             ]);
 
