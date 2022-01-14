@@ -652,11 +652,11 @@ class ApiClient
     {
         Log::stack((array) config('glamstack-gitlab.log_channels'))
             ->error($exception->getMessage(), [
-                'error_reference' => $reference,
                 'event_type' => 'gitlab-api-response-error',
                 'class' => $log_class,
                 'status_code' => $exception->getCode(),
                 'message' => $exception->getMessage(),
+                'reference' => $reference,
                 'gitlab_version' => $this->gitlab_version,
             ]);
 
