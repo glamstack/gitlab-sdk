@@ -531,6 +531,16 @@ $project->status->code;
 200
 ```
 
+## Error Handling
+
+The HTTP status code for the API response is included in each log entry in the message and in the JSON `status_code`. Any internal SDK errors also included an equivalent status code depending on the type of error. The `message` includes the SDK friendly message. If an exception is thrown, the `reference`
+
+If a `5xx` error is returned from the API, the `ApiClient` `handleException` method will return a response.
+
+See the [Log Outputs](#log-outputs) below for how the SDK handles errors and logging.
+
+See the [GitLab Rest API Documentation](https://docs.gitlab.com/ee/api/#status-codes) to learn more about the status codes that can be returned. More information on each resource endpoint can be found on the respective [API documentation page](https://docs.gitlab.com/ee/api/api_resources.html).
+
 ## Issue Tracking and Bug Reports
 
 Please visit our [issue tracker](https://gitlab.com/gitlab-com/business-technology/engineering/access-manager/packages/composer/gitlab-sdk/-/issues) and create an issue or comment on an existing issue.
