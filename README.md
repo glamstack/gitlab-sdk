@@ -541,6 +541,72 @@ See the [Log Outputs](#log-outputs) below for how the SDK handles errors and log
 
 See the [GitLab Rest API Documentation](https://docs.gitlab.com/ee/api/#status-codes) to learn more about the status codes that can be returned. More information on each resource endpoint can be found on the respective [API documentation page](https://docs.gitlab.com/ee/api/api_resources.html).
 
+## Log Outputs
+
+> The output of error messages is shown in the `README` to allow search engines to index these messages for developer debugging support. Any 5xx error messages will be returned as as `Symfony\Component\HttpKernel\Exception\HttpException` or configuration errors, including any errors in the `ApiClient::setApiConnectionVariables()` method.
+
+### Instance Configuration and Authentication
+
+When the `ApiClient` class is invoked for the first time, an API connection test is performed to the `/version` endpoint of the GitLab instance. This endpoint requires authentication, so this validates whether the Access Token is valid. If successful, the GitLab version number is then included in `gitlab_version` in the log entry.
+
+```php
+$gitlab_api = new \Glamstack\Gitlab\ApiClient('gitlab_com');
+$gitlab_api->get('/projects/32589035');
+```
+
+#### Valid Access Token
+
+```json
+[2022-01-14 18:24:59] local.INFO: GET 200 https://gitlab.com/api/v4/version {"event_type":"gitlab-api-response-info","class":"Glamstack\\Gitlab\\ApiClient","status_code":"200","message":"GET 200 https://gitlab.com/api/v4/version","api_method":"GET","api_endpoint":"https://gitlab.com/api/v4/version","gitlab_instance":"gitlab_com","gitlab_version":null}
+
+[2022-01-14 18:24:59] local.INFO: GET 200 https://gitlab.com/api/v4/projects/32589035 {"event_type":"gitlab-api-response-info","class":"Glamstack\\Gitlab\\ApiClient","status_code":"200","message":"GET 200 https://gitlab.com/api/v4/projects/32589035","api_method":"GET","api_endpoint":"https://gitlab.com/api/v4/projects/32589035","gitlab_instance":"gitlab_com","gitlab_version":"14.7.0-pre"}
+```
+
+#### Missing Access Token
+
+```php
+Symfony\Component\HttpKernel\Exception\HttpException with message 'The GitLab access token for this instance key is null. Without this configuration, there is no API token to use for authenticated API requests. This SDK does not support unauthenticated GitLab API requests. You can configure the access token in your .env file. If you are using GitLab.com, add `GITLAB_COM_ACCESS_TOKEN` to your `.env` file. If you are connecting to a self-managed GitLab instance, you need to configure your instance in the config/glamstack-gitlab.php file. '
+```
+
+```json
+[2022-01-14 18:28:20] local.CRITICAL: The GitLab access token for this instance key is null. Without this configuration, there is no API token to use for authenticated API requests. This SDK does not support unauthenticated GitLab API requests. You can configure the access token in your .env file. If you are using GitLab.com, add `GITLAB_COM_ACCESS_TOKEN` to your `.env` file. If you are connecting to a self-managed GitLab instance, you need to configure your instance in the config/glamstack-gitlab.php file.  {"event_type":"gitlab-api-config-missing-error","class":"Glamstack\\Gitlab\\ApiClient","status_code":"501","message":"The GitLab access token for this instance key is null. Without this configuration, there is no API token to use for authenticated API requests. This SDK does not support unauthenticated GitLab API requests. You can configure the access token in your .env file. If you are using GitLab.com, add `GITLAB_COM_ACCESS_TOKEN` to your `.env` file. If you are connecting to a self-managed GitLab instance, you need to configure your instance in the config/glamstack-gitlab.php file. ","gitlab_instance":"gitlab_com"}
+```
+
+#### Invalid Access Token
+
+```json
+[2022-01-14 18:32:14] local.INFO: GET 401 https://gitlab.com/api/v4/version {"event_type":"gitlab-api-response-info","class":"Glamstack\\Gitlab\\ApiClient","status_code":"401","message":"GET 401 https://gitlab.com/api/v4/version","api_method":"GET","api_endpoint":"https://gitlab.com/api/v4/version","gitlab_instance":"gitlab_com","gitlab_version":null}
+
+[2022-01-14 18:32:14] local.ERROR: The GitLab access token for this instance key has been configured but is invalid (does not exist on GitLab instance or has expired). Please generate a new Access Token and update the variable in your `.env` file. This SDK does not support unauthenticated GitLab API requests. {"event_type":"gitlab-api-config-invalid-error","class":"Glamstack\\Gitlab\\ApiClient","status_code":"401","message":"The GitLab access token for this instance key has been configured but is invalid (does not exist on GitLab instance or has expired). Please generate a new Access Token and update the variable in your `.env` file. This SDK does not support unauthenticated GitLab API requests.","gitlab_instance":"gitlab_com"}
+
+[2022-01-14 18:32:14] local.INFO: GET 401 https://gitlab.com/api/v4/projects/32589035 {"event_type":"gitlab-api-response-info","class":"Glamstack\\Gitlab\\ApiClient","status_code":"401","message":"GET 401 https://gitlab.com/api/v4/projects/32589035","api_method":"GET","api_endpoint":"https://gitlab.com/api/v4/projects/32589035","gitlab_instance":"gitlab_com","gitlab_version":null}
+```
+
+#### ApiClient Construct Access Token
+
+```php
+$gitlab_api = new \Glamstack\Gitlab\ApiClient('gitlab_com', 'glpat-A1b2c4D4e5f6G7h8i9j0');
+$gitlab_api->get('/projects/32589035');
+```
+
+```json
+[2022-01-14 18:35:12] local.INFO: The GitLab access token for these API calls is using an access token that was provided in the ApiClient construct method. The access token that might be configured in the `.env` file is not being used. {"event_type":"gitlab-api-config-override-warning","class":"Glamstack\\Gitlab\\ApiClient","status_code":"203","message":"The GitLab access token for these API calls is using an access token that was provided in the ApiClient construct method. The access token that might be configured in the `.env` file is not being used.","gitlab_instance":"gitlab_com"}
+
+[2022-01-14 18:35:12] local.INFO: GET 200 https://gitlab.com/api/v4/version {"event_type":"gitlab-api-response-info","class":"Glamstack\\Gitlab\\ApiClient","status_code":"200","message":"GET 200 https://gitlab.com/api/v4/version","api_method":"GET","api_endpoint":"https://gitlab.com/api/v4/version","gitlab_instance":"gitlab_com","gitlab_version":null}
+
+[2022-01-14 18:35:13] local.INFO: GET 200 https://gitlab.com/api/v4/projects/32589035 {"event_type":"gitlab-api-response-info","class":"Glamstack\\Gitlab\\ApiClient","status_code":"200","message":"GET 200 https://gitlab.com/api/v4/projects/32589035","api_method":"GET","api_endpoint":"https://gitlab.com/api/v4/projects/32589035","gitlab_instance":"gitlab_com","gitlab_version":"14.7.0-pre"}
+```
+
+#### Missing GitLab Instance Configuration
+
+```json
+[2022-01-14 18:38:17] local.CRITICAL: The GitLab instance key is not defined in config/glamstack-gitlab.php. Without this array config, there is no API Base URL or API Access Token to connect with. {"event_type":"gitlab-api-config-missing-error","class":"Glamstack\\Gitlab\\ApiClient","status_code":"501","message":"The GitLab instance key is not defined in config/glamstack-gitlab.php. Without this array config, there is no API Base URL or API Access Token to connect with.","gitlab_instance":"gitlab_net"}
+```
+
+```json
+[2022-01-14 18:41:29] local.CRITICAL: The GitLab base URL for instance key is null. Without this configuration, there is no API base URL to connect with. You can configure the base URL in config/glamstack-gitlab.php or .env file. {"event_type":"gitlab-api-config-missing-error","class":"Glamstack\\Gitlab\\ApiClient","status_code":"501","message":"The GitLab base URL for instance key is null. Without this configuration, there is no API base URL to connect with. You can configure the base URL in config/glamstack-gitlab.php or .env file.","gitlab_instance":"gitlab_net"}
+```
+
 ## Issue Tracking and Bug Reports
 
 Please visit our [issue tracker](https://gitlab.com/gitlab-com/business-technology/engineering/access-manager/packages/composer/gitlab-sdk/-/issues) and create an issue or comment on an existing issue.
