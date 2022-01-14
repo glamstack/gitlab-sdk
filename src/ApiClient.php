@@ -624,15 +624,17 @@ class ApiClient
      */
     public function logInfo(string $method, string $endpoint, string $status_code) : void
     {
-        $info_message = Str::upper($method).' '.$status_code.' '.$endpoint;
+        $message = Str::upper($method).' '.$status_code.' '.$endpoint;
 
         Log::stack((array) config('glamstack-gitlab.log_channels'))
             ->info($message, [
                 'event_type' => 'gitlab-api-response-info',
                 'class' => get_class(),
                 'status_code' => $status_code,
+                'message' => $message,
                 'api_method' => Str::upper($method),
                 'api_endpoint' => $endpoint,
+                'gitlab_instance' => $this->instance_key,
                 'gitlab_version' => $this->gitlab_version,
             ]);
     }
