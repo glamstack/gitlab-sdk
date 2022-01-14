@@ -657,6 +657,7 @@ class ApiClient
                 'status_code' => $exception->getCode(),
                 'message' => $exception->getMessage(),
                 'reference' => $reference,
+                'gitlab_instance' => $this->instance_key,
                 'gitlab_version' => $this->gitlab_version,
             ]);
 
