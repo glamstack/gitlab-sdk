@@ -111,11 +111,15 @@ class ApiClient
             /** @phpstan-ignore-next-line */
             $this->access_token = config('glamstack-gitlab.' . $this->instance_key . '.access_token');
         } else {
-            $this->error_message = 'The GitLab access token for instance key is ' .
-                'null. Without this configuration, there is no API token to ' .
-                'use for authenticated API requests. It is still possible to ' .
-                'perform API calls to public endpoints without an access ' .
-                'token, however you may see unexpected permission errors.';
+            $this->error_message = 'The GitLab access token for this instance ' .
+                'key is null. Without this configuration, there is no API ' .
+                'token to use for authenticated API requests. This SDK does ' .
+                'not support unauthenticated GitLab API requests. You can ' .
+                'configure the access token in your .env file. If you are ' .
+                'using GitLab.com, add `GITLAB_COM_ACCESS_TOKEN` to your ' .
+                '`.env` file. If you are connecting to a self-managed GitLab ' .
+                'instance, you need to configure your instance in the ' .
+                'config/glamstack-gitlab.php file. ';
 
             Log::stack((array) config('glamstack-gitlab.log_channels'))
                 ->warning($this->error_message, [
