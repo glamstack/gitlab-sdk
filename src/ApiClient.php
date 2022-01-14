@@ -58,11 +58,11 @@ class ApiClient
 
             Log::stack((array) config('glamstack-gitlab.log_channels'))
                 ->critical($this->error_message, [
-                    'error_message' => $this->error_message,
                     'error_reference' => $this->instance_key,
                     'event_type' => 'gitlab-api-config-missing-error',
                     'class' => get_class(),
                     'status_code' => '501',
+                    'message' => $this->error_message,
                 ]);
 
             return false;
@@ -80,11 +80,11 @@ class ApiClient
 
             Log::stack((array) config('glamstack-gitlab.log_channels'))
                 ->critical($this->error_message, [
-                    'error_message' => $this->error_message,
                     'error_reference' => $this->instance_key,
                     'event_type' => 'gitlab-api-config-missing-error',
                     'class' => get_class(),
                     'status_code' => '501',
+                    'message' => $this->error_message,
                 ]);
 
             return false;
@@ -652,11 +652,11 @@ class ApiClient
     {
         Log::stack((array) config('glamstack-gitlab.log_channels'))
             ->error($exception->getMessage(), [
-                'error_message' => $exception->getMessage(),
                 'error_reference' => $reference,
                 'event_type' => 'gitlab-api-response-error',
                 'class' => $log_class,
                 'status_code' => $exception->getCode(),
+                'message' => $exception->getMessage(),
                 'gitlab_version' => $this->gitlab_version,
             ]);
 
