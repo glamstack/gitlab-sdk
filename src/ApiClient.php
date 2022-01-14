@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 
 class ApiClient
 {
-    private string $access_token;
+    private ?string $access_token;
     private ?string $base_url;
     private string $error_message;
     private string $instance_key;
@@ -18,14 +18,14 @@ class ApiClient
 
     public function __construct(string $instance_key = 'gitlab_com', string $access_token = null)
     {
+        // Set the instance key to look up in config/glamstack-gitlab.php
+        // This is validated in the setApiConnectionVariables() method.
+        $this->instance_key = $instance_key;
+
         // Set access token property using custom access token or null value
         // If not null, this will override the config/glamstack-gitlab.php
         // and/or .env value for this instance base URL.
-        //
-        // Due to low number of Unauthenticated Endpoints for the GitLab API
-        // this package will require an API token. Doing so makes the code
-        // easier to create.
-        $this->instance_key = $instance_key;
+        $this->access_token = $access_token;
 
         // Set request headers
         $this->setRequestHeaders();
@@ -37,9 +37,7 @@ class ApiClient
             abort(501, $this->error_message);
         }
 
-        if($access_token != null){
-            $this->access_token = $access_token;
-        }
+
         // Test API Connection and set $gitlab_version property for logs
         $this->testConnection();
     }
@@ -95,30 +93,48 @@ class ApiClient
         // Check if the Access Token has been configured in the instance_key
         // array in config/glamstack-gitlab.php and/or the .env file. Another
         // option is for users to provide an access token in __construct().
-        if (config('glamstack-gitlab.' . $this->instance_key . '.access_token') != null) {
+        if ($this->access_token != null) {
+            $message = 'The GitLab access token for these API ' .
+                'calls is using an access token that was provided in the ' .
+                'ApiClient construct method. The access token that might ' .
+                'be configured in the `.env` file is not being used.';
+
+            Log::stack((array) config('glamstack-gitlab.log_channels'))
+                ->info($message, [
+                    'event_type' => 'gitlab-api-config-override-warning',
+                    'class' => get_class(),
+                    'status_code' => '203',
+                    'message' =>  $message,
+                    'gitlab_instance' => $this->instance_key,
+                ]);
+        } elseif (config('glamstack-gitlab.' . $this->instance_key . '.access_token') != null) {
             /** @phpstan-ignore-next-line */
             $this->access_token = config('glamstack-gitlab.' . $this->instance_key . '.access_token');
         } else {
-            $this->error_message = 'The GitLab access token for instance key is ' .
-                'null. Without this configuration, there is no API token to ' .
-                'use for authenticated API requests. It is still possible to ' .
-                'perform API calls to public endpoints without an access ' .
-                'token, however you may see unexpected permission errors.';
+            $this->error_message = 'The GitLab access token for this instance ' .
+                'key is null. Without this configuration, there is no API ' .
+                'token to use for authenticated API requests. This SDK does ' .
+                'not support unauthenticated GitLab API requests. You can ' .
+                'configure the access token in your .env file. If you are ' .
+                'using GitLab.com, add `GITLAB_COM_ACCESS_TOKEN` to your ' .
+                '`.env` file. If you are connecting to a self-managed GitLab ' .
+                'instance, you need to configure your instance in the ' .
+                'config/glamstack-gitlab.php file. ';
 
             Log::stack((array) config('glamstack-gitlab.log_channels'))
-                ->warning($this->error_message, [
-                    'log_event_type' => 'gitlab-api-config-missing-warning',
-                    'log_class' => get_class(),
-                    'error_code' => '501',
-                    'error_message' =>  $this->error_message,
-                    'error_reference' => $this->instance_key,
+                ->critical($this->error_message, [
+                    'event_type' => 'gitlab-api-config-missing-error',
+                    'class' => get_class(),
+                    'status_code' => '501',
+                    'message' =>  $this->error_message,
+                    'gitlab_instance' => $this->instance_key,
                 ]);
+
             return false;
         }
 
         return true;
     }
-
 
     /**
      * Test the connection to the GitLab instance and get the version
@@ -138,18 +154,19 @@ class ApiClient
         if ($response->status->code == 200) {
             $this->gitlab_version = $response->object->version;
         } elseif ($response->status->code == 401) {
-            $error_message = 'The GitLab access token for instance key is ' .
-                'null. Without this configuration, the logs will not contain ' .
-                'the GitLab Version number since the /api/v4/version endpoint ' .
-                'is only available for authenticated users.';
+            $error_message = 'The GitLab access token for this instance ' .
+            'key has been configured but is invalid (does not exist on GitLab ' .
+            'instance or has expired). Please generate a new Access Token and ' .
+            'update the variable in your `.env` file. This SDK does not ' .
+            'support unauthenticated GitLab API requests.';
 
             Log::stack((array) config('glamstack-gitlab.log_channels'))
-                ->warning($error_message, [
-                    'log_event_type' => 'gitlab-api-config-limitation-warning',
-                    'log_class' => get_class(),
-                    'error_code' => '401',
-                    'error_message' =>  $error_message,
-                    'error_reference' => $this->instance_key,
+                ->error($error_message, [
+                    'event_type' => 'gitlab-api-config-invalid-error',
+                    'class' => get_class(),
+                    'status_code' => '401',
+                    'message' =>  $error_message,
+                    'gitlab_instance' => $this->instance_key,
                 ]);
         } else {
             // Any other error messages will be caught by handleException
