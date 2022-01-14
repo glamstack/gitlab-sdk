@@ -93,7 +93,21 @@ class ApiClient
         // Check if the Access Token has been configured in the instance_key
         // array in config/glamstack-gitlab.php and/or the .env file. Another
         // option is for users to provide an access token in __construct().
-        if (config('glamstack-gitlab.' . $this->instance_key . '.access_token') != null) {
+        if ($this->access_token != null) {
+            $message = 'The GitLab access token for these API ' .
+                'calls is using an access token that was provided in the ' .
+                'ApiClient construct method. The access token that might ' .
+                'be configured in the `.env` file is not being used.';
+
+            Log::stack((array) config('glamstack-gitlab.log_channels'))
+                ->info($message, [
+                    'event_type' => 'gitlab-api-config-override-warning',
+                    'class' => get_class(),
+                    'status_code' => '203',
+                    'message' =>  $message,
+                    'gitlab_instance' => $this->instance_key,
+                ]);
+        } elseif (config('glamstack-gitlab.' . $this->instance_key . '.access_token') != null) {
             /** @phpstan-ignore-next-line */
             $this->access_token = config('glamstack-gitlab.' . $this->instance_key . '.access_token');
         } else {
