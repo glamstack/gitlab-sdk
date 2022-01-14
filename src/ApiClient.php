@@ -9,7 +9,7 @@ use Illuminate\Support\Str;
 
 class ApiClient
 {
-    private string $access_token;
+    private ?string $access_token;
     private ?string $base_url;
     private string $error_message;
     private string $instance_key;
@@ -18,14 +18,14 @@ class ApiClient
 
     public function __construct(string $instance_key = 'gitlab_com', string $access_token = null)
     {
+        // Set the instance key to look up in config/glamstack-gitlab.php
+        // This is validated in the setApiConnectionVariables() method.
+        $this->instance_key = $instance_key;
+
         // Set access token property using custom access token or null value
         // If not null, this will override the config/glamstack-gitlab.php
         // and/or .env value for this instance base URL.
-        //
-        // Due to low number of Unauthenticated Endpoints for the GitLab API
-        // this package will require an API token. Doing so makes the code
-        // easier to create.
-        $this->instance_key = $instance_key;
+        $this->access_token = $access_token;
 
         // Set request headers
         $this->setRequestHeaders();
@@ -37,9 +37,7 @@ class ApiClient
             abort(501, $this->error_message);
         }
 
-        if($access_token != null){
-            $this->access_token = $access_token;
-        }
+
         // Test API Connection and set $gitlab_version property for logs
         $this->testConnection();
     }
