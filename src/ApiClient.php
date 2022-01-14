@@ -136,7 +136,6 @@ class ApiClient
         return true;
     }
 
-
     /**
      * Test the connection to the GitLab instance and get the version
      *
