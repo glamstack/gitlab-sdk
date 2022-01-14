@@ -122,13 +122,14 @@ class ApiClient
                 'config/glamstack-gitlab.php file. ';
 
             Log::stack((array) config('glamstack-gitlab.log_channels'))
-                ->warning($this->error_message, [
-                    'log_event_type' => 'gitlab-api-config-missing-warning',
-                    'log_class' => get_class(),
-                    'error_code' => '501',
-                    'error_message' =>  $this->error_message,
-                    'error_reference' => $this->instance_key,
+                ->critical($this->error_message, [
+                    'event_type' => 'gitlab-api-config-missing-error',
+                    'class' => get_class(),
+                    'status_code' => '501',
+                    'message' =>  $this->error_message,
+                    'gitlab_instance' => $this->instance_key,
                 ]);
+
             return false;
         }
 
