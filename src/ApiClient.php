@@ -154,10 +154,11 @@ class ApiClient
         if ($response->status->code == 200) {
             $this->gitlab_version = $response->object->version;
         } elseif ($response->status->code == 401) {
-            $error_message = 'The GitLab access token for instance key is ' .
-                'null. Without this configuration, the logs will not contain ' .
-                'the GitLab Version number since the /api/v4/version endpoint ' .
-                'is only available for authenticated users.';
+            $error_message = 'The GitLab access token for this instance ' .
+            'key has been configured but is invalid (does not exist on GitLab ' .
+            'instance or has expired). Please generate a new Access Token and ' .
+            'update the variable in your `.env` file. This SDK does not ' .
+            'support unauthenticated GitLab API requests.';
 
             Log::stack((array) config('glamstack-gitlab.log_channels'))
                 ->warning($error_message, [
