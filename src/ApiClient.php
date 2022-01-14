@@ -161,12 +161,12 @@ class ApiClient
             'support unauthenticated GitLab API requests.';
 
             Log::stack((array) config('glamstack-gitlab.log_channels'))
-                ->warning($error_message, [
-                    'log_event_type' => 'gitlab-api-config-limitation-warning',
-                    'log_class' => get_class(),
-                    'error_code' => '401',
-                    'error_message' =>  $error_message,
-                    'error_reference' => $this->instance_key,
+                ->error($error_message, [
+                    'event_type' => 'gitlab-api-config-invalid-error',
+                    'class' => get_class(),
+                    'status_code' => '401',
+                    'message' =>  $error_message,
+                    'gitlab_instance' => $this->instance_key,
                 ]);
         } else {
             // Any other error messages will be caught by handleException
