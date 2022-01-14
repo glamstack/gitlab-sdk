@@ -73,9 +73,9 @@ class ApiClient
         if (config('glamstack-gitlab.' . $this->instance_key . '.base_url') != null) {
             $this->base_url = config('glamstack-gitlab.' . $this->instance_key . '.base_url') . '/api/v4';
         } else {
-            $this->error_message = 'The GitLab base URL for instance key is null. ' .
-                'Without this configuration, there is no API base URL to ' .
-                'connect with. You can configure the base URL in ' .
+            $this->error_message = 'The GitLab base URL for instance key is ' .
+                'null. Without this configuration, there is no API base URL ' .
+                'to connect with. You can configure the base URL in ' .
                 'config/glamstack-gitlab.php or .env file.';
 
             Log::stack((array) config('glamstack-gitlab.log_channels'))
