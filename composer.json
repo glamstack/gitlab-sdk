@@ -15,7 +15,7 @@
     ],
     "require": {
         "php": ">=8.0",
-        "laravel/framework": ">=9.0"
+        "laravel/framework": ">=9.1"
     },
     "require-dev": {
         "nunomaduro/larastan": "^1.0",
