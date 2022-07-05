@@ -15,11 +15,11 @@
     ],
     "require": {
         "php": ">=8.0",
-        "laravel/framework": ">=8.0"
+        "laravel/framework": ">=9.0"
     },
     "require-dev": {
         "nunomaduro/larastan": "^1.0",
-        "orchestra/testbench": "^6.23"
+        "orchestra/testbench": "^7.6"
     },
     "autoload": {
         "psr-4": {
