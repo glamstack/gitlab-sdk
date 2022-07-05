@@ -75,7 +75,7 @@ $record = $gitlab_api->delete('/projects/'.$project_id);
 | Requirement | Version |
 |-------------|---------|
 | PHP         | >=8.0   |
-| Laravel     | >=8.0   |
+| Laravel     | >=9.0   |
 
 ### Add Composer Package
 
