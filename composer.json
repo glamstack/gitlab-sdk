@@ -1,5 +1,5 @@
 {
-    "name": "glamstack/gitlab-sdk",
+    "name": "gitlab-it/gitlab-sdk",
     "description": "GitLab API SDK for Laravel",
     "authors": [
         {
