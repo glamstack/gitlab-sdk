@@ -28,13 +28,13 @@
     },
     "autoload": {
         "psr-4": {
-            "Glamstack\\Gitlab\\": "src/"
+            "GitlabIt\\Gitlab\\": "src/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Glamstack\\Gitlab\\GitlabServiceProvider"
+                "GitlabIt\\Gitlab\\GitlabServiceProvider"
             ]
         }
     }
