@@ -1,6 +1,7 @@
 {
     "name": "gitlab-it/gitlab-sdk",
     "description": "GitLab API SDK for Laravel",
+    "license": "MIT",
     "authors": [
         {
             "name": "Dillon Wheeler",
