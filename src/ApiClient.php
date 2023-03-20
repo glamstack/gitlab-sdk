@@ -12,8 +12,6 @@ use Illuminate\Support\Str;
 
 class ApiClient
 {
-    use ResponseLog;
-
     public const API_VERSION = 4;
     public const PER_PAGE = 100;
     public const REQUIRED_CONFIG_PARAMETERS = ['base_url', 'access_token', 'log_channels'];
@@ -708,32 +706,113 @@ class ApiClient
     }
 
     /**
-     * Handle GitLab API Exception
+     * Create a log entry for an API call
      *
-     * @param \Illuminate\Http\Client\RequestException $exception
-     *      An instance of the exception
+     * This method is called from other methods and create log entry and throw exception
      *
-     * @param string $log_class
-     *      get_class()
+     * @param string $method
+     *      The lowercase name of the method that calls this function (ex. `get`)
      *
-     * @param string $reference
-     *      Reference slug or identifier
+     * @param string $url
+     *      The URL of the API call including the concatenated base URL and URI
      *
-     * @return string Error message
+     * @param object $response
+     *      The HTTP response formatted with $this->parseApiResponse()
      */
-    public function handleException($exception, $log_class, $reference)
+    private function logResponse(string $method, string $url, object $response): void
     {
-        Log::stack((array) config('glamstack-gitlab.log_channels'))
-            ->error($exception->getMessage(), [
-                'class' => $log_class,
-                'connection_key' => $this->connection_key,
-                'event_type' => 'gitlab-api-response-error',
-                'gitlab_version' => $this->gitlab_version,
-                'message' => $exception->getMessage(),
-                'reference' => $reference,
-                'status_code' => $exception->getCode(),
-            ]);
+        $message = Str::upper($method) . ' ' . $response->status->code . ' ' . $url;
 
-        return $exception->getMessage();
+        $log_context = [
+            'api_endpoint' => $url,
+            'api_method' => Str::upper($method),
+            'class' => get_class(),
+            'connection_key' => $this->connection_key,
+            'gitlab_version' => $this->gitlab_version,
+            'status_code' => $response->status->code,
+        ];
+
+        $log_context['event_type'] = match ($response->status->code) {
+            200 => 'gitlab-api-response-info',
+            201 => 'gitlab-api-response-created',
+            202 => 'gitlab-api-response-accepted',
+            204 => 'gitlab-api-reponse-deleted',
+            400 => 'gitlab-api-response-error-bad-request',
+            401 => 'gitlab-api-response-error-unauthorized',
+            403 => 'gitlab-api-response-error-forbidden',
+            404 => 'gitlab-api-response-error-not-found',
+            405 => 'gitlab-api-response-error-method-not-allowed',
+            412 => 'gitlab-api-response-error-precondition-failed',
+            422 => 'gitlab-api-response-error-unprocessable',
+            429 => 'gitlab-api-response-error-rate-limit',
+            500 => 'gitlab-api-response-error-server'
+        };
+
+        // dd($response->object);
+        if (is_object($response->object) && property_exists($response->object, 'error')) {
+            $log_context['reason'] = $response->object->error;
+        } elseif (!$response->status->successful && isset($response->object->message)) {
+            $log_context['reason'] = $response->json;
+        } elseif (!$response->status->successful) {
+            $log_context['reason'] = null;
+        }
+
+        switch ($response->status->code) {
+            case 200:
+                Log::stack((array) $this->connection_config['log_channels'])->info($message, $log_context);
+                break;
+            case 201:
+                Log::stack((array) $this->connection_config['log_channels'])->info($message, $log_context);
+                break;
+            case 202:
+                Log::stack((array) $this->connection_config['log_channels'])->info($message, $log_context);
+                break;
+            case 204:
+                Log::stack((array) $this->connection_config['log_channels'])->info($message, $log_context);
+                break;
+            case 400:
+                Log::stack((array) $this->connection_config['log_channels'])->warning($message, $log_context);
+                throw new BadRequestException($response->json);
+            case 401:
+                $message = 'The `GITLAB_' . Str::upper($this->connection_key) . '_ACCESS_TOKEN` has been ' .
+                    'configured but is invalid (does not exist or has expired). Please generate a new Access Token ' .
+                    'and update the variable in your `.env` file.';
+                Log::stack((array) $this->connection_config['log_channels'])->error($message, $log_context);
+                throw new UnauthorizedException($message);
+            case 403:
+                Log::stack((array) $this->connection_config['log_channels'])->error($message, $log_context);
+                throw new ForbiddenException();
+            case 404:
+                Log::stack((array) $this->connection_config['log_channels'])->warning($message, $log_context);
+                throw new NotFoundException($message);
+            case 412:
+                Log::stack((array) $this->connection_config['log_channels'])->error($message, $log_context);
+                throw new PreconditionFailedException($message);
+            case 422:
+                Log::stack((array) $this->connection_config['log_channels'])->error($message, $log_context);
+                throw new UnprocessableException($message);
+            case 429:
+                $log_context['rate_limit_limit'] = $response->headers['RateLimit-Limit'] ?? null;
+                $log_context['rate_limit_observed'] = $response->headers['RateLimit-Observed'] ?? null;
+                $log_context['rate_limit_remaining'] = $response->headers['RateLimit-Remaining'] ?? null;
+                $log_context['rate_limit_reset_timestamp'] = $response->headers['RateLimit-Reset'] ?? null;
+                $log_context['rate_limit_reset_datetime'] = $response->headers['RateLimit-ResetTime'] ?? null;
+
+                if (isset($response->headers['RateLimit-Reset'])) {
+                    $time_remaining = Carbon::parse($response->headers['RateLimit-Reset'])->diffInSeconds();
+                    $log_context['rate_limit_reset_secs_remaining'] = $time_remaining;
+                    $message = 'Rate Limit Exceeded. Please try again in ' . $time_remaining . ' seconds';
+                } else {
+                    $log_context['rate_limit_reset_secs_remaining'] = null;
+                }
+
+                Log::stack((array) $this->connection_config['log_channels'])->warning($message, $log_context);
+                throw new RateLimitException();
+            case 500:
+                Log::stack((array) $this->connection_config['log_channels'])->error($message, $log_context);
+                throw new ServerErrorException($response->json);
+            default:
+                throw new \Exception('Unknown GitLab SDK API Response');
+        }
     }
 }
