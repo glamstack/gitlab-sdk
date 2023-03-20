@@ -110,15 +110,13 @@ class ApiClient
     {
         foreach (self::REQUIRED_CONFIG_PARAMETERS as $parameter) {
             if (!array_key_exists($parameter, $connection_config)) {
-                $error_message = 'The GitLab ' . $parameter . ' is not defined ' .
-                    'in the ApiClient construct connection_config array provided. ' .
-                    'This is a required parameter to be passed in not using the ' .
+                $error_message = 'The GitLab ' . $parameter . ' is not defined in the ApiClient construct ' .
+                    'connection_config array provided. This is a required parameter to be passed in not using the ' .
                     'configuration file and connection_key initialization method.';
             } else {
-                $error_message = 'The GitLab SDK connection_config array provided ' .
-                    'in the ApiClient construct connection_config array ' .
-                    'size should be ' . count(self::REQUIRED_CONFIG_PARAMETERS) .
-                    'but ' . count($connection_config) . ' array keys were provided.';
+                $error_message = 'The GitLab SDK connection_config array provided in the ApiClient construct ' .
+                    'connection_config array size should be ' . count(self::REQUIRED_CONFIG_PARAMETERS) . 'but ' .
+                    count($connection_config) . ' array keys were provided.';
             }
             Log::stack((array) config('gitlab-sdk.auth.log_channels'))
                 ->critical(
@@ -170,9 +168,8 @@ class ApiClient
         } elseif ($custom_configuration) {
             $this->connection_config = $custom_configuration;
         } else {
-            $error_message = 'The GitLab connection key is not defined in ' .
-                '`config/gitlab-sdk.php` connections array. Without this ' .
-                'array config, there is no URL or API token to connect with.';
+            $error_message = 'The `' . $this->connection_key . '` connection key is not defined in ' .
+                '`config/gitlab-sdk.php` connections array.';
 
             Log::stack((array) config('gitlab-sdk.auth.log_channels'))
                 ->critical($error_message, [
@@ -199,10 +196,8 @@ class ApiClient
         if ($this->connection_config['base_url'] != null) {
             $this->base_url = $this->connection_config['base_url'] . '/api/v' . self::API_VERSION;
         } else {
-            $error_message = 'The Base URL for this GitLab connection key ' .
-                'is not defined in `config/gitlab-sdk.php` or `.env` file. ' .
-                'Without this configuration (ex. `https://gitlab.example.com`), ' .
-                'there is no URL to perform API calls with.';
+            $error_message = 'You need to add the `GITLAB_' . Str::upper($this->connection_key) . '_BASE_URL` ' .
+                'variable in your `.env` file (ex. `https://gitlab.com` or `https://gitlab.example.com`).';
 
             Log::stack((array) config('gitlab-sdk.auth.log_channels'))
                 ->critical($error_message, [
@@ -230,11 +225,8 @@ class ApiClient
         if ($this->connection_config['access_token'] != null) {
             $this->access_token = $this->connection_config['access_token'];
         } else {
-            $error_message = 'The access token for this GitLab connection key ' .
-                'is not defined in your `.env` file. The variable name for the ' .
-                'access token can be found in the connection configuration in ' .
-                '`config/gitlab-sdk.php`. Without this access token, you will ' .
-                'not be able to performed authenticated API calls.';
+            $error_message = 'You need to add the `GITLAB_' . Str::upper($this->connection_key) . '_ACCESS_TOKEN` ' .
+                'variable in your `.env` file so you can perform authenticated API calls.';
 
             Log::stack((array) config('gitlab-sdk.auth.log_channels'))
                 ->critical($error_message, [
@@ -300,11 +292,9 @@ class ApiClient
                 $this->gitlab_version = $response->object->version;
                 break;
             case 401:
-                $error_message = 'The GitLab access token for this instance ' .
-                'key has been configured but is invalid (does not exist on GitLab ' .
-                'instance or has expired). Please generate a new Access Token and ' .
-                'update the variable in your `.env` file. This SDK does not ' .
-                'support unauthenticated GitLab API requests.';
+                $error_message = 'The `GITLAB_' . Str::upper($this->connection_key) . '_ACCESS_TOKEN` has been ' .
+                    'configured but is invalid (does not exist or has expired). Please generate a new Access Token ' .
+                    'and update the variable in your `.env` file.';
 
                 Log::stack((array) config('gitlab-sdk.auth.log_channels'))
                     ->critical($error_message, [
