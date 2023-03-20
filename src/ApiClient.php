@@ -541,8 +541,8 @@ class ApiClient
             foreach ($links as $link_key => $link_url) {
                 if (Str::contains($link_url, 'next')) {
                     // Remove the '<' and '>; rel="next"' that is around the next api_url
-                    // Before: <https://gitlab.example.com/api/v4/projects/8/issues/8/notes?page=3&per_page=3>; rel="next"
-                    // After: https://gitlab.example.com/api/v4/projects/8/issues/8/notes?page=3&per_page=3
+                    // Before: <https://gitlab.com/api/v4/projects/8/issues/8/notes?page=3&per_page=3>; rel="next"
+                    // After: https://gitlab.com/api/v4/projects/8/issues/8/notes?page=3&per_page=3
                     $url = Str::remove('<', $links[$link_key]);
                     $url = Str::remove('>; rel="next"', $url);
                     return $url;
