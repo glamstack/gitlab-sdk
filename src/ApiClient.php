@@ -118,17 +118,16 @@ class ApiClient
                     'connection_config array size should be ' . count(self::REQUIRED_CONFIG_PARAMETERS) . 'but ' .
                     count($connection_config) . ' array keys were provided.';
             }
-            Log::stack((array) config('gitlab-sdk.auth.log_channels'))
-                ->critical(
-                    $error_message,
-                    [
-                        'event_type' => 'gitlab-api-config-missing-error',
-                        'class' => get_class(),
-                        'status_code' => '501',
-                        'message' => $error_message,
-                        'connection_url' => $connection_config['base_url'],
-                    ]
-                );
+
+            Log::stack((array) config('gitlab-sdk.auth.log_channels'))->critical(
+                $error_message,
+                [
+                    'event_type' => 'gitlab-api-config-missing-error',
+                    'class' => get_class(),
+                    'status_code' => '501',
+                    'connection_url' => $connection_config['base_url'],
+                ]
+            );
         }
     }
 
@@ -171,14 +170,15 @@ class ApiClient
             $error_message = 'The `' . $this->connection_key . '` connection key is not defined in ' .
                 '`config/gitlab-sdk.php` connections array.';
 
-            Log::stack((array) config('gitlab-sdk.auth.log_channels'))
-                ->critical($error_message, [
+            Log::stack((array) config('gitlab-sdk.auth.log_channels'))->critical(
+                $error_message,
+                [
                     'event_type' => 'gitlab-api-config-missing-key-error',
                     'class' => get_class(),
                     'status_code' => '501',
-                    'message' => $error_message,
                     'connection_key' => $this->connection_key,
-                ]);
+                ]
+            );
 
             throw new ConfigurationException($error_message, 501);
         }
@@ -199,14 +199,15 @@ class ApiClient
             $error_message = 'You need to add the `GITLAB_' . Str::upper($this->connection_key) . '_BASE_URL` ' .
                 'variable in your `.env` file (ex. `https://gitlab.com` or `https://gitlab.example.com`).';
 
-            Log::stack((array) config('gitlab-sdk.auth.log_channels'))
-                ->critical($error_message, [
+            Log::stack((array) config('gitlab-sdk.auth.log_channels'))->critical(
+                $error_message,
+                [
                     'event_type' => 'gitlab-api-config-missing-url-error',
                     'class' => get_class(),
                     'status_code' => '501',
-                    'message' => $error_message,
                     'connection_key' => $this->connection_key,
-                ]);
+                ]
+            );
 
             throw new ConfigurationException($error_message, 501);
         }
@@ -228,14 +229,15 @@ class ApiClient
             $error_message = 'You need to add the `GITLAB_' . Str::upper($this->connection_key) . '_ACCESS_TOKEN` ' .
                 'variable in your `.env` file so you can perform authenticated API calls.';
 
-            Log::stack((array) config('gitlab-sdk.auth.log_channels'))
-                ->critical($error_message, [
+            Log::stack((array) config('gitlab-sdk.auth.log_channels'))->critical(
+                $error_message,
+                [
                     'event_type' => 'gitlab-api-config-missing-token-error',
                     'class' => get_class(),
                     'status_code' => '501',
-                    'message' => $error_message,
                     'connection_key' => $this->connection_key,
-                ]);
+                ]
+            );
 
             throw new ConfigurationException($error_message, 501);
         }
@@ -296,15 +298,15 @@ class ApiClient
                     'configured but is invalid (does not exist or has expired). Please generate a new Access Token ' .
                     'and update the variable in your `.env` file.';
 
-                Log::stack((array) config('gitlab-sdk.auth.log_channels'))
-                    ->critical($error_message, [
+                Log::stack((array) config('gitlab-sdk.auth.log_channels'))->critical(
+                    $error_message,
+                    [
                         'event_type' => 'gitlab-api-config-invalid-error',
                         'class' => get_class(),
                         'status_code' => '401',
-                        'message' => $error_message,
                         'connection_key' => $this->connection_key,
-                    ]);
-                break;
+                    ]
+                );
             default:
                 throw new ConfigurationException(
                     'The GitLab API connection test failed for an unknown reason. See logs for details.',
