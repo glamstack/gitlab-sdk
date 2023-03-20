@@ -348,7 +348,8 @@ class ApiClient
 
         $response = $this->parseApiResponse($request);
 
-        $this->logResponse('get', $this->base_url . $uri, $response);
+        $query_string = !empty($request_data) ? '?' . http_build_query($request_data) : '';
+        $this->logResponse('get', $this->base_url . $uri . $query_string, $response);
 
         if ($this->checkForPagination($response->headers) == true) {
             $request->paginated_results = $this->getPaginatedResults($this->base_url . $uri, $request_data);
