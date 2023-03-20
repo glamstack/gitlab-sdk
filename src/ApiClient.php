@@ -128,6 +128,8 @@ class ApiClient
                     'connection_url' => $connection_config['base_url'],
                 ]
             );
+
+            throw new ConfigurationException($error_message, 501);
         }
     }
 
@@ -307,12 +309,16 @@ class ApiClient
                         'connection_key' => $this->connection_key,
                     ]
                 );
+
+                throw new ConfigurationException(
+                    $error_message,
+                    $response->status->code
+                );
             default:
                 throw new ConfigurationException(
                     'The GitLab API connection test failed for an unknown reason. See logs for details.',
                     $response->status->code
                 );
-                break;
         }
     }
 
