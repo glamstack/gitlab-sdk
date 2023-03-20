@@ -254,9 +254,7 @@ class ApiClient
         // Use Laravel collection to search for the package. We will use the array to get the package name (in case it
         // changes with a fork) and return the version key. For production, this will show a release number. In
         // development, this will show the branch name.
-        $composer_package = collect($composer_lock_json['packages'])
-            ->where('name', 'gitlab-it/gitlab-sdk')
-            ->first();
+        $composer_package = collect($composer_lock_json['packages'])->where('name', 'gitlab-it/gitlab-sdk')->first();
 
         // Reformat `gitlab-it/gitlab-sdk` as `GitLabIT-Gitlab-Sdk`
         $composer_package_formatted = Str::title(Str::replace('/', '-', $composer_package['name']));
@@ -541,11 +539,7 @@ class ApiClient
      */
     private function checkForPagination(array $headers): bool
     {
-        if (array_key_exists('X-Next-Page', $headers)) {
-            return true;
-        }
-
-        return false;
+        return (array_key_exists('X-Next-Page', $headers) ? true : false);
     }
 
     /**
