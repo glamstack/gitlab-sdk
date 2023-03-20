@@ -242,7 +242,7 @@ class ApiClient
      *
      * @return void
      */
-    public function setRequestHeaders(): void
+    private function setRequestHeaders(): void
     {
         // Get Laravel and PHP Version
         $laravel = 'Laravel/' . app()->version();
@@ -511,7 +511,7 @@ class ApiClient
      *      "CF-RAY" => "6a7ebcad3ce908db-SEA",
      *  }
      */
-    public function convertHeadersToArray(array $header_response): array
+    private function convertHeadersToArray(array $header_response): array
     {
         $headers = [];
 
@@ -539,7 +539,7 @@ class ApiClient
      *      True if the response requires multiple pages
      *      False if response is a single page
      */
-    public function checkForPagination(array $headers): bool
+    private function checkForPagination(array $headers): bool
     {
         if (array_key_exists('X-Next-Page', $headers)) {
             return true;
@@ -559,7 +559,7 @@ class ApiClient
      * @return ?string
      *      https://gitlab.example.com/api/v4/projects/8/issues/8/notes?page=3&per_page=3
      */
-    public function generateNextPaginatedResultUrl(array $headers): ?string
+    private function generateNextPaginatedResultUrl(array $headers): ?string
     {
         if (array_key_exists('Link', $headers)) {
             $links = explode(', ', $headers['Link']);
@@ -597,7 +597,7 @@ class ApiClient
      * @return object
      *      An array of the response objects for each page combined casted as an object.
      */
-    public function getPaginatedResults(string $paginated_url, array $request_data = []): object
+    private function getPaginatedResults(string $paginated_url, array $request_data = []): object
     {
         // Define empty array for adding API results to
         $records = [];
@@ -677,7 +677,7 @@ class ApiClient
      *   }
      * }
      */
-    public function parseApiResponse(object $response): object
+    private function parseApiResponse(object $response): object
     {
         if (property_exists($response, 'paginated_results')) {
             $json_output = json_encode($response->paginated_results);
