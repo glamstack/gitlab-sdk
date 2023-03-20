@@ -60,8 +60,6 @@ class ApiClient
      *
      * @param ?string $connection_key
      *      The connection key to use for configuration.
-     *
-     * @return void
      */
     protected function setConnectionKeyConfiguration(?string $connection_key): void
     {
@@ -73,12 +71,11 @@ class ApiClient
      * Set the configuration utilizing the `connection_config`
      *
      * This method will utilize the `connection_config` array provided in the construct method. The `connection_config`
-     * array keys will have to match the `REQUIRED_CONFIG_PARAMETERS` array
+     * array keys will have to match the `REQUIRED_CONFIG_PARAMETERS` array. The connection key will be set to custom
+     * and ignored for the remainder of the SDK usage.
      *
      * @param array $connection_config
      *      Array that contains the required parameters for the connection configuration
-     *
-     * @return void
      */
     protected function setCustomConfiguration(array $connection_config): void
     {
@@ -95,8 +92,6 @@ class ApiClient
      *
      * @param array $connection_config
      *      The connection configuration array provided to the `construct` method.
-     *
-     * @return void
      */
     protected function validateConnectionConfigArray(array $connection_config): void
     {
@@ -130,9 +125,7 @@ class ApiClient
      *
      * @param ?string $connection_key (Optional)
      *      The connection key to use from config/gitlab-sdk.php. If not set, it will use the default connection set in
-     *      the OKTA_DEFAULT_CONNECTION `.env` variable or config/gitlab-sdk.php if not set.
-     *
-     * @return void
+     *      the GITLAB_DEFAULT_CONNECTION `.env` variable or config/gitlab-sdk.php if not set.
      */
     protected function setConnectionKey(string $connection_key = null): void
     {
@@ -151,8 +144,6 @@ class ApiClient
      *
      * @param array $custom_configuration
      *      Custom configuration array for SDK initialization
-     *
-     * @return void
      */
     protected function setConnectionConfig(array $custom_configuration = []): void
     {
@@ -181,9 +172,7 @@ class ApiClient
     /**
      * Set the base_url class property variable
      *
-     * The base_url variable is defined in `.env` variable `{CONNECTION_KEY}_BASE_URL` or config/gitlab-sdk.php
-     *
-     * @return void
+     * The base_url variable is defined in `.env` variable `GITLAB_{CONNECTION_KEY}_BASE_URL` or config/gitlab-sdk.php
      */
     protected function setBaseUrl(): void
     {
@@ -210,10 +199,8 @@ class ApiClient
     /**
      * Set the access_token class property variable
      *
-     * The access_token variable is defined in `.env` variable `{CONNECTION_KEY}_ACCESS_TOKEN` and is associated with a
-     * connection config defined in config/gitlab-sdk.php.
-     *
-     * @return void
+     * The access_token variable is defined in `.env` variable `GITLAB_{CONNECTION_KEY}_ACCESS_TOKEN` and is associated
+     * with a connection config defined in config/gitlab-sdk.php.
      */
     protected function setAccessToken(): void
     {
@@ -239,8 +226,6 @@ class ApiClient
 
     /**
      * Set the request headers for the GitLab API request
-     *
-     * @return void
      */
     private function setRequestHeaders(): void
     {
@@ -270,8 +255,6 @@ class ApiClient
      * Test the connection to the GitLab API
      *
      * @see https://docs.gitlab.com/ee/api/version.html
-     *
-     * @return void
      */
     public function testConnection(): void
     {
@@ -315,6 +298,8 @@ class ApiClient
     /**
      * GitLab API Get Request
      *
+     * This method is called from other services to perform a POST request and return a structured object.
+     *
      * Example Usage:
      * ```php
      * $gitlab_api = new \GitlabIt\Gitlab\ApiClient('gitlab_com');
@@ -353,8 +338,8 @@ class ApiClient
 
     /**
      * GitLab API POST Request
-     * This method is called from other services to perform a POST request and
-     * return a structured object.
+     *
+     * This method is called from other services to perform a POST request and return a structured object.
      *
      * Example Usage:
      * ```php
@@ -368,8 +353,6 @@ class ApiClient
      * @param string $uri The URI with leading slash after `/api/v4`
      *
      * @param array $request_data Optional Post Body array
-     *
-     * @return object
      */
     public function post(string $uri, array $request_data = []): object
     {
@@ -386,6 +369,7 @@ class ApiClient
 
     /**
      * GitLab API PUT Request
+     *
      * This method is called from other services to perform a PUT request and
      * return a structured object.
      *
@@ -400,8 +384,6 @@ class ApiClient
      * @param string $uri The URI with leading slash after `/api/v4`
      *
      * @param array $request_data Optional request data to send with PUT request
-     *
-     * @return object
      */
     public function put(string $uri, array $request_data = []): object
     {
@@ -418,6 +400,7 @@ class ApiClient
 
     /**
      * GitLab API DELETE Request
+     *
      * This method is called from other services to perform a DELETE request and return a structured object.
      *
      * Example Usage:
@@ -429,8 +412,6 @@ class ApiClient
      * @param string $uri The URI with leading slash after `/api/v4`
      *
      * @param array $request_data Optional request data to send with DELETE request
-     *
-     * @return object
      */
     public function delete(string $uri, array $request_data = []): object
     {
