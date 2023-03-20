@@ -2,10 +2,16 @@
 
 namespace GitlabIt\Gitlab;
 
+use Carbon\Carbon;
+use GitlabIt\Gitlab\Exceptions\BadRequestException;
 use GitlabIt\Gitlab\Exceptions\ConfigurationException;
-use GitlabIt\Gitlab\Traits\ResponseLog;
-use Illuminate\Http\Client\RequestException;
-use Illuminate\Http\Client\Response;
+use GitlabIt\Gitlab\Exceptions\ForbiddenException;
+use GitlabIt\Gitlab\Exceptions\NotFoundException;
+use GitlabIt\Gitlab\Exceptions\PreconditionFailedException;
+use GitlabIt\Gitlab\Exceptions\RateLimitException;
+use GitlabIt\Gitlab\Exceptions\ServerErrorException;
+use GitlabIt\Gitlab\Exceptions\UnauthorizedException;
+use GitlabIt\Gitlab\Exceptions\UnprocessableException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
