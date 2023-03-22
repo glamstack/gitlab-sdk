@@ -133,6 +133,25 @@ return [
      *      Ex. ['single', 'gitlab-sdk', 'slack']
      *
      *      @see https://laravel.com/docs/9.x/logging
+     *
+     * @param bool $exceptions
+     *      You can choose how to handle non-successful 4xx and 5xx HTTP responses.
+     *
+     *      true - An exception will be thrown for errors that you
+     *          can choose to catch or let it show to users in the application.
+     *          400 - \GitlabIt\Gitlab\Exceptions\BadRequestException
+     *          401 - \GitlabIt\Gitlab\Exceptions\UnauthorizedException
+     *          403 - \GitlabIt\Gitlab\Exceptions\ForbiddenException
+     *          404 - \GitlabIt\Gitlab\Exceptions\NotFoundException
+     *          409 - \GitlabIt\Gitlab\Exceptions\ConflictException
+     *          412 - \GitlabIt\Gitlab\Exceptions\PreconditionFailedException
+     *          422 - \GitlabIt\Gitlab\Exceptions\UnprocessableException
+     *          429 - \GitlabIt\Gitlab\Exceptions\RateLimitExceptions
+     *          500 - \GitlabIt\Gitlab\Exceptions\ServerErrorException
+     *
+     *      false - You can check the $response->status array to check for the
+     *          `code`, `client_error` or `successful` values and handle the
+     *          response accordingly.
      */
     'connections' => [
 
@@ -140,6 +159,7 @@ return [
         'saas' => [
             'base_url' => env('GITLAB_SAAS_BASE_URL', 'https://gitlab.com'),
             'access_token' => env('GITLAB_SAAS_ACCESS_TOKEN'),
+            'exceptions' => env('GITLAB_SAAS_EXCEPTIONS', false),
             'log_channels' => ['single'],
         ],
 
@@ -147,6 +167,7 @@ return [
         'dev' => [
             'base_url' => env('GITLAB_DEV_BASE_URL', 'https://gitlab.com'),
             'access_token' => env('GITLAB_DEV_ACCESS_TOKEN'),
+            'exceptions' => env('GITLAB_DEV_EXCEPTIONS', false),
             'log_channels' => ['single'],
         ],
 
@@ -154,6 +175,7 @@ return [
         'self_managed' => [
             'base_url' => env('GITLAB_SELF_MANAGED_BASE_URL'),
             'access_token' => env('GITLAB_SELF_MANAGED_ACCESS_TOKEN'),
+            'exceptions' => env('GITLAB_SELF_MANAGED_EXCEPTIONS', false),
             'log_channels' => ['single'],
         ],
 
@@ -163,27 +185,32 @@ return [
         // 'example' => [
         //     'base_url' => env('GITLAB_EXAMPLE_BASE_URL', 'https://gitlab.example.com'),
         //     'access_token' => env('GITLAB_EXAMPLE_ACCESS_TOKEN'),
+        //     'exceptions' => env('GITLAB_EXAMPLE_EXCEPTIONS', false),
         //     'log_channels' => ['single'],
         // ],
 
         // 'project_alias1' => [
         //     'base_url' => env('GITLAB_PROJECT_ALIAS1_BASE_URL', 'https://gitlab.com'),
         //     'access_token' => env('GITLAB_PROJECT_ALIAS1_ACCESS_TOKEN'),
+        //     'exceptions' => env('GITLAB_PROJECT_ALIAS1_EXCEPTIONS', false),
         // ],
 
         // 'project_alias2' => [
         //     'base_url' => env('GITLAB_PROJECT_ALIAS2_BASE_URL', 'https://gitlab.com'),
         //     'access_token' => env('GITLAB_PROJECT_ALIAS2_ACCESS_TOKEN'),
+        //     'exceptions' => env('GITLAB_PROJECT_ALIAS2_EXCEPTIONS', false),
         // ],
 
         // 'group_alias1' => [
         //     'base_url' => env('GITLAB_GROUP_ALIAS1_BASE_URL', 'https://gitlab.com'),
         //     'access_token' => env('GITLAB_GROUP_ALIAS1_ACCESS_TOKEN'),
+        //     'exceptions' => env('GITLAB_GROUP_ALIAS1_EXCEPTIONS', false),
         // ],
 
         // 'group_alias2' => [
         //     'base_url' => env('GITLAB_GROUP_ALIAS2_BASE_URL', 'https://gitlab.com'),
         //     'access_token' => env('GITLAB_GROUP_ALIAS2_ACCESS_TOKEN'),
+        //     'exceptions' => env('GITLAB_GROUP_ALIAS2_EXCEPTIONS', false),
         // ],
 
     ],
