@@ -749,25 +749,25 @@ class ApiClient
                 break;
             case 400:
                 Log::stack((array) $this->connection_config['log_channels'])->warning($message, $log_context);
-                throw new BadRequestException($response->json);
+                break;
             case 401:
                 $message = 'The `GITLAB_' . Str::upper($this->connection_key) . '_ACCESS_TOKEN` has been ' .
                     'configured but is invalid (does not exist or has expired). Please generate a new Access Token ' .
                     'and update the variable in your `.env` file.';
                 Log::stack((array) $this->connection_config['log_channels'])->error($message, $log_context);
-                throw new UnauthorizedException($message);
+                break;
             case 403:
                 Log::stack((array) $this->connection_config['log_channels'])->error($message, $log_context);
-                throw new ForbiddenException();
+                break;
             case 404:
                 Log::stack((array) $this->connection_config['log_channels'])->warning($message, $log_context);
-                throw new NotFoundException($message);
+                break;
             case 412:
                 Log::stack((array) $this->connection_config['log_channels'])->error($message, $log_context);
-                throw new PreconditionFailedException($message);
+                break;
             case 422:
                 Log::stack((array) $this->connection_config['log_channels'])->error($message, $log_context);
-                throw new UnprocessableException($message);
+                break;
             case 429:
                 $log_context['rate_limit_limit'] = $response->headers['RateLimit-Limit'] ?? null;
                 $log_context['rate_limit_observed'] = $response->headers['RateLimit-Observed'] ?? null;
@@ -784,12 +784,13 @@ class ApiClient
                 }
 
                 Log::stack((array) $this->connection_config['log_channels'])->warning($message, $log_context);
-                throw new RateLimitException();
+                break;
             case 500:
                 Log::stack((array) $this->connection_config['log_channels'])->error($message, $log_context);
-                throw new ServerErrorException($response->json);
+                break;
             default:
-                throw new \Exception('Unknown GitLab SDK API Response');
+                Log::stack((array) $this->connection_config['log_channels'])->error($message, $log_context);
+                break;
         }
     }
 
