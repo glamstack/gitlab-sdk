@@ -818,8 +818,8 @@ class ApiClient
                     throw new BadRequestException($response->json);
                 case 401:
                     $message = 'The `GITLAB_' . Str::upper($this->connection_key) . '_ACCESS_TOKEN` has been ' .
-                        'configured but is invalid (does not exist or has expired). Please generate a new Access Token ' .
-                        'and update the variable in your `.env` file.';
+                        'configured but is invalid (does not exist or has expired). Please generate a new Access ' .
+                        'Token and update the variable in your `.env` file.';
                     throw new UnauthorizedException($message);
                 case 403:
                     throw new ForbiddenException();
