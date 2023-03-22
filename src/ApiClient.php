@@ -325,6 +325,7 @@ class ApiClient
 
         $query_string = !empty($request_data) ? '?' . http_build_query($request_data) : '';
         $this->logResponse('get', $this->base_url . $uri . $query_string, $response);
+        $this->throwExceptionIfEnabled('get', $this->base_url . $uri . $query_string, $response);
 
         if ($this->checkForPagination($response->headers) == true) {
             $request->paginated_results = $this->getPaginatedResults($this->base_url . $uri, $request_data);
@@ -363,6 +364,7 @@ class ApiClient
         $response = $this->parseApiResponse($request);
 
         $this->logResponse('post', $this->base_url . $uri, $response);
+        $this->throwExceptionIfEnabled('post', $this->base_url . $uri, $response);
 
         return $response;
     }
@@ -394,6 +396,7 @@ class ApiClient
         $response = $this->parseApiResponse($request);
 
         $this->logResponse('put', $this->base_url . $uri, $response);
+        $this->throwExceptionIfEnabled('put', $this->base_url . $uri, $response);
 
         return $response;
     }
@@ -422,6 +425,7 @@ class ApiClient
         $response = $this->parseApiResponse($request);
 
         $this->logResponse('delete', $this->base_url . $uri, $response);
+        $this->throwExceptionIfEnabled('delete', $this->base_url . $uri, $response);
 
         return $response;
     }
@@ -598,6 +602,7 @@ class ApiClient
             $response = $this->parseApiResponse($request);
 
             $this->logResponse('get', $paginated_url, $response);
+            $this->throwExceptionIfEnabled('get', $paginated_url, $response);
 
             // Loop through each object from the response and add it to the $records array
             foreach ($response->object as $api_record) {
@@ -785,6 +790,51 @@ class ApiClient
                 throw new ServerErrorException($response->json);
             default:
                 throw new \Exception('Unknown GitLab SDK API Response');
+        }
+    }
+
+    /**
+     * Throw an exception for a 4xx or 5xx response for an API call
+     *
+     * This method checks whether the .env variable or config value for `GITLAB_{CONNECTION_KEY}_EXCEPTIONS=true`
+     *
+     * @param string $method
+     *      The lowercase name of the method that calls this function (ex. `get`)
+     *
+     * @param string $url
+     *      The URL of the API call including the concatenated base URL and URI
+     *
+     * @param object $response
+     *      The HTTP response formatted with $this->parseApiResponse()
+     */
+    private function throwExceptionIfEnabled(string $method, string $url, object $response): void
+    {
+        if (config('gitlab-sdk.connections.' . $this->connection_key . '.exceptions') == true) {
+            $message = Str::upper($method) . ' ' . $response->status->code . ' ' . $url;
+
+            switch ($response->status->code) {
+                case 400:
+                    throw new BadRequestException($response->json);
+                case 401:
+                    $message = 'The `GITLAB_' . Str::upper($this->connection_key) . '_ACCESS_TOKEN` has been ' .
+                        'configured but is invalid (does not exist or has expired). Please generate a new Access Token ' .
+                        'and update the variable in your `.env` file.';
+                    throw new UnauthorizedException($message);
+                case 403:
+                    throw new ForbiddenException();
+                case 404:
+                    throw new NotFoundException($message);
+                case 412:
+                    throw new PreconditionFailedException($message);
+                case 422:
+                    throw new UnprocessableException($message);
+                case 429:
+                    throw new RateLimitException();
+                case 500:
+                    throw new ServerErrorException($response->json);
+                default:
+                    throw new \Exception('Unknown GitLab SDK API Response');
+            }
         }
     }
 }
