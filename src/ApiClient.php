@@ -29,6 +29,18 @@ class ApiClient
     private ?string $gitlab_version = null;
     private array $request_headers;
 
+    /**
+     * Standard initialization construct method.
+     *
+     * @param string|null $connection_key
+     *      The connection key to use for initialization
+     *
+     * @param array $connection_config
+     *      Customizable connection configuration array
+     *
+     * @throws ConfigurationException
+     *      Thrown if there is a problem with the initialization configuration
+     */
     public function __construct(
         string $connection_key = null,
         array $connection_config = []
