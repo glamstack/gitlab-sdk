@@ -239,7 +239,7 @@ class ApiClient
     /**
      * Set the request headers for the GitLab API request
      */
-    private function setRequestHeaders(): void
+    protected function setRequestHeaders(): void
     {
         // Get Laravel and PHP Version
         $laravel = 'Laravel/' . app()->version();
@@ -503,7 +503,7 @@ class ApiClient
      *      "CF-RAY" => "6a7ebcad3ce908db-SEA",
      *  }
      */
-    private function convertHeadersToArray(array $header_response): array
+    protected function convertHeadersToArray(array $header_response): array
     {
         $headers = [];
 
@@ -531,7 +531,7 @@ class ApiClient
      *      True if the response requires multiple pages
      *      False if response is a single page
      */
-    private function checkForPagination(array $headers): bool
+    protected function checkForPagination(array $headers): bool
     {
         return (array_key_exists('X-Next-Page', $headers) ? true : false);
     }
@@ -547,7 +547,7 @@ class ApiClient
      * @return ?string
      *      https://gitlab.example.com/api/v4/projects/8/issues/8/notes?page=3&per_page=3
      */
-    private function generateNextPaginatedResultUrl(array $headers): ?string
+    protected function generateNextPaginatedResultUrl(array $headers): ?string
     {
         if (array_key_exists('Link', $headers)) {
             $links = explode(', ', $headers['Link']);
@@ -585,7 +585,7 @@ class ApiClient
      * @return object
      *      An array of the response objects for each page combined casted as an object.
      */
-    private function getPaginatedResults(string $paginated_url, array $request_data = []): object
+    protected function getPaginatedResults(string $paginated_url, array $request_data = []): object
     {
         // Define empty array for adding API results to
         $records = [];
@@ -666,7 +666,7 @@ class ApiClient
      *   }
      * }
      */
-    private function parseApiResponse(object $response): object
+    protected function parseApiResponse(object $response): object
     {
         if (property_exists($response, 'paginated_results')) {
             $json_output = json_encode($response->paginated_results);
@@ -705,7 +705,7 @@ class ApiClient
      * @param object $response
      *      The HTTP response formatted with $this->parseApiResponse()
      */
-    private function logResponse(string $method, string $url, object $response): void
+    protected function logResponse(string $method, string $url, object $response): void
     {
         $message = Str::upper($method) . ' ' . $response->status->code . ' ' . $url;
 
@@ -817,7 +817,7 @@ class ApiClient
      * @param object $response
      *      The HTTP response formatted with $this->parseApiResponse()
      */
-    private function throwExceptionIfEnabled(string $method, string $url, object $response): void
+    protected function throwExceptionIfEnabled(string $method, string $url, object $response): void
     {
         if (config('gitlab-sdk.connections.' . $this->connection_key . '.exceptions') == true) {
             $message = Str::upper($method) . ' ' . $response->status->code . ' ' . $url;
