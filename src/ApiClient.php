@@ -270,9 +270,6 @@ class ApiClient
      */
     public function testConnection(): void
     {
-        // Set version to null before making first GET request
-        $this->gitlab_version = null;
-
         // API call to get version from GitLab instance (a simple API endpoint). Logging for is handled by get() method.
         $response = $this->get('/version');
 
