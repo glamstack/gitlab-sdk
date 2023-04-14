@@ -2,13 +2,14 @@
 
 ## Overview
 
-The GitLab SDK is an open source [Composer](https://getcomposer.org/) package created by [GitLab IT Engineering](https://about.gitlab.com/handbook/business-technology/engineering/) for use in the [GitLab Access Manager](https://gitlab.com/gitlab-com/business-technology/engineering/access-manager) Laravel application for connecting to multiple GitLab instances for provisioning and deprovisioning of users, groups, group members, projects, and other related functionality.
+The GitLab SDK is an open source [Composer](https://getcomposer.org/) package created by [GitLab IT Engineering](https://about.gitlab.com/handbook/it/engineering/dev/) for use in internal Laravel applications for connecting to GitLab SaaS or self-managed instances for provisioning and deprovisioning of users, groups, projects, and other related functionality.
 
-> **Disclaimer:** This is not an official package maintained by the GitLab product and development teams. This is an internal tool that we use in the IT department that we have open sourced as part of our company values.
+> **Disclaimer:** This is not an official package maintained by the GitLab product and development teams. This is an internal tool that we use in the GitLab IT department that we have open sourced as part of our company values.
 >
-> Please use at your own risk and create issues for any bugs that you encounter.
+> Please use at your own risk and create merge requests for any bugs that you encounter.
 >
 > We do not maintain a roadmap of community feature requests, however we invite you to contribute and we will gladly review your merge requests.
+
 
 ### Maintainers
 
