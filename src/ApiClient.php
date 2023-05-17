@@ -842,8 +842,6 @@ class ApiClient
                     throw new RateLimitException();
                 case 500:
                     throw new ServerErrorException($response->json);
-                default:
-                    throw new \Exception('Unknown GitLab SDK API Response');
             }
         }
     }
