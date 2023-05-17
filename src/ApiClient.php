@@ -822,6 +822,11 @@ class ApiClient
         if (config('gitlab-sdk.connections.' . $this->connection_key . '.exceptions') == true) {
             $message = Str::upper($method) . ' ' . $response->status->code . ' ' . $url;
 
+            // If API error includes a message, append friendly message to existing request string
+            if (property_exists($response->object, 'message')) {
+                $message .= ' - ' . $response->object->message;
+            }
+
             switch ($response->status->code) {
                 case 400:
                     throw new BadRequestException($response->json);
@@ -831,7 +836,7 @@ class ApiClient
                         'Token and update the variable in your `.env` file.';
                     throw new UnauthorizedException($message);
                 case 403:
-                    throw new ForbiddenException();
+                    throw new ForbiddenException($message);
                 case 404:
                     throw new NotFoundException($message);
                 case 412:
@@ -839,7 +844,7 @@ class ApiClient
                 case 422:
                     throw new UnprocessableException($message);
                 case 429:
-                    throw new RateLimitException();
+                    throw new RateLimitException($message);
                 case 500:
                     throw new ServerErrorException($response->json);
             }
