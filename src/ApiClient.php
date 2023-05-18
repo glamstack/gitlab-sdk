@@ -722,7 +722,7 @@ class ApiClient
             200 => 'gitlab-api-response-info',
             201 => 'gitlab-api-response-created',
             202 => 'gitlab-api-response-accepted',
-            204 => 'gitlab-api-reponse-deleted',
+            204 => 'gitlab-api-response-deleted',
             400 => 'gitlab-api-response-error-bad-request',
             401 => 'gitlab-api-response-error-unauthorized',
             403 => 'gitlab-api-response-error-forbidden',
