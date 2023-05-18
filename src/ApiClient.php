@@ -533,7 +533,7 @@ class ApiClient
      */
     protected function checkForPagination(array $headers): bool
     {
-        return (array_key_exists('X-Next-Page', $headers) ? true : false);
+        return (array_key_exists('X-Next-Page', $headers));
     }
 
     /**
