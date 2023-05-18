@@ -714,6 +714,7 @@ class ApiClient
             'api_method' => Str::upper($method),
             'class' => get_class(),
             'connection_key' => $this->connection_key,
+            'event_type' => null,
             'gitlab_version' => $this->gitlab_version,
             'status_code' => $response->status->code,
         ];
