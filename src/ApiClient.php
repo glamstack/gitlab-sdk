@@ -2,18 +2,22 @@
 
 namespace GitlabIt\Gitlab;
 
+use Carbon\Carbon;
+use GitlabIt\Gitlab\Exceptions\BadRequestException;
 use GitlabIt\Gitlab\Exceptions\ConfigurationException;
-use GitlabIt\Gitlab\Traits\ResponseLog;
-use Illuminate\Http\Client\RequestException;
-use Illuminate\Http\Client\Response;
+use GitlabIt\Gitlab\Exceptions\ForbiddenException;
+use GitlabIt\Gitlab\Exceptions\NotFoundException;
+use GitlabIt\Gitlab\Exceptions\PreconditionFailedException;
+use GitlabIt\Gitlab\Exceptions\RateLimitException;
+use GitlabIt\Gitlab\Exceptions\ServerErrorException;
+use GitlabIt\Gitlab\Exceptions\UnauthorizedException;
+use GitlabIt\Gitlab\Exceptions\UnprocessableException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class ApiClient
 {
-    use ResponseLog;
-
     public const API_VERSION = 4;
     public const PER_PAGE = 100;
     public const REQUIRED_CONFIG_PARAMETERS = ['base_url', 'access_token', 'log_channels'];
@@ -25,6 +29,18 @@ class ApiClient
     private ?string $gitlab_version = null;
     private array $request_headers;
 
+    /**
+     * Standard initialization construct method.
+     *
+     * @param string|null $connection_key
+     *      The connection key to use for initialization
+     *
+     * @param array $connection_config
+     *      Customizable connection configuration array
+     *
+     * @throws ConfigurationException
+     *      Thrown if there is a problem with the initialization configuration
+     */
     public function __construct(
         string $connection_key = null,
         array $connection_config = []
@@ -56,15 +72,10 @@ class ApiClient
      *
      * @param ?string $connection_key
      *      The connection key to use for configuration.
-     *
-     * @return void
      */
     protected function setConnectionKeyConfiguration(?string $connection_key): void
     {
-        // Set the class connection_key variable.
         $this->setConnectionKey($connection_key);
-
-        // Set the class connection_config variable
         $this->setConnectionConfig();
     }
 
@@ -72,22 +83,16 @@ class ApiClient
      * Set the configuration utilizing the `connection_config`
      *
      * This method will utilize the `connection_config` array provided in the construct method. The `connection_config`
-     * array keys will have to match the `REQUIRED_CONFIG_PARAMETERS` array
+     * array keys will have to match the `REQUIRED_CONFIG_PARAMETERS` array. The connection key will be set to custom
+     * and ignored for the remainder of the SDK usage.
      *
      * @param array $connection_config
      *      Array that contains the required parameters for the connection configuration
-     *
-     * @return void
      */
     protected function setCustomConfiguration(array $connection_config): void
     {
-        // Validate that `$connection_config` has all required parameters
         $this->validateConnectionConfigArray($connection_config);
-
-        // Set the connection key to `custom` and will be ignored for remainder of the SDK use
         $this->setConnectionKey('custom');
-
-        // Set the connection_config array with the provided array
         $this->setConnectionConfig($connection_config);
     }
 
@@ -99,34 +104,31 @@ class ApiClient
      *
      * @param array $connection_config
      *      The connection configuration array provided to the `construct` method.
-     *
-     * @return void
      */
     protected function validateConnectionConfigArray(array $connection_config): void
     {
         foreach (self::REQUIRED_CONFIG_PARAMETERS as $parameter) {
             if (!array_key_exists($parameter, $connection_config)) {
-                $error_message = 'The GitLab ' . $parameter . ' is not defined ' .
-                    'in the ApiClient construct connection_config array provided. ' .
-                    'This is a required parameter to be passed in not using the ' .
+                $error_message = 'The GitLab ' . $parameter . ' is not defined in the ApiClient construct ' .
+                    'connection_config array provided. This is a required parameter to be passed in not using the ' .
                     'configuration file and connection_key initialization method.';
             } else {
-                $error_message = 'The GitLab SDK connection_config array provided ' .
-                    'in the ApiClient construct connection_config array ' .
-                    'size should be ' . count(self::REQUIRED_CONFIG_PARAMETERS) .
-                    'but ' . count($connection_config) . ' array keys were provided.';
+                $error_message = 'The GitLab SDK connection_config array provided in the ApiClient construct ' .
+                    'connection_config array size should be ' . count(self::REQUIRED_CONFIG_PARAMETERS) . 'but ' .
+                    count($connection_config) . ' array keys were provided.';
             }
-            Log::stack((array) config('gitlab-sdk.auth.log_channels'))
-                ->critical(
-                    $error_message,
-                    [
-                        'event_type' => 'gitlab-api-config-missing-error',
-                        'class' => get_class(),
-                        'status_code' => '501',
-                        'message' => $error_message,
-                        'connection_url' => $connection_config['base_url'],
-                    ]
-                );
+
+            Log::stack((array) config('gitlab-sdk.auth.log_channels'))->critical(
+                $error_message,
+                [
+                    'event_type' => 'gitlab-api-config-missing-error',
+                    'class' => get_class(),
+                    'status_code' => '501',
+                    'connection_url' => $connection_config['base_url'],
+                ]
+            );
+
+            throw new ConfigurationException($error_message, 501);
         }
     }
 
@@ -135,9 +137,7 @@ class ApiClient
      *
      * @param ?string $connection_key (Optional)
      *      The connection key to use from config/gitlab-sdk.php. If not set, it will use the default connection set in
-     *      the OKTA_DEFAULT_CONNECTION `.env` variable or config/gitlab-sdk.php if not set.
-     *
-     * @return void
+     *      the GITLAB_DEFAULT_CONNECTION `.env` variable or config/gitlab-sdk.php if not set.
      */
     protected function setConnectionKey(string $connection_key = null): void
     {
@@ -156,8 +156,6 @@ class ApiClient
      *
      * @param array $custom_configuration
      *      Custom configuration array for SDK initialization
-     *
-     * @return void
      */
     protected function setConnectionConfig(array $custom_configuration = []): void
     {
@@ -166,18 +164,18 @@ class ApiClient
         } elseif ($custom_configuration) {
             $this->connection_config = $custom_configuration;
         } else {
-            $error_message = 'The GitLab connection key is not defined in ' .
-                '`config/gitlab-sdk.php` connections array. Without this ' .
-                'array config, there is no URL or API token to connect with.';
+            $error_message = 'The `' . $this->connection_key . '` connection key is not defined in ' .
+                '`config/gitlab-sdk.php` connections array.';
 
-            Log::stack((array) config('gitlab-sdk.auth.log_channels'))
-                ->critical($error_message, [
+            Log::stack((array) config('gitlab-sdk.auth.log_channels'))->critical(
+                $error_message,
+                [
                     'event_type' => 'gitlab-api-config-missing-key-error',
                     'class' => get_class(),
                     'status_code' => '501',
-                    'message' => $error_message,
                     'connection_key' => $this->connection_key,
-                ]);
+                ]
+            );
 
             throw new ConfigurationException($error_message, 501);
         }
@@ -186,28 +184,25 @@ class ApiClient
     /**
      * Set the base_url class property variable
      *
-     * The base_url variable is defined in `.env` variable `{CONNECTION_KEY}_BASE_URL` or config/gitlab-sdk.php
-     *
-     * @return void
+     * The base_url variable is defined in `.env` variable `GITLAB_{CONNECTION_KEY}_BASE_URL` or config/gitlab-sdk.php
      */
     protected function setBaseUrl(): void
     {
         if ($this->connection_config['base_url'] != null) {
             $this->base_url = $this->connection_config['base_url'] . '/api/v' . self::API_VERSION;
         } else {
-            $error_message = 'The Base URL for this GitLab connection key ' .
-                'is not defined in `config/gitlab-sdk.php` or `.env` file. ' .
-                'Without this configuration (ex. `https://gitlab.example.com`), ' .
-                'there is no URL to perform API calls with.';
+            $error_message = 'You need to add the `GITLAB_' . Str::upper($this->connection_key) . '_BASE_URL` ' .
+                'variable in your `.env` file (ex. `https://gitlab.com` or `https://gitlab.example.com`).';
 
-            Log::stack((array) config('gitlab-sdk.auth.log_channels'))
-                ->critical($error_message, [
+            Log::stack((array) config('gitlab-sdk.auth.log_channels'))->critical(
+                $error_message,
+                [
                     'event_type' => 'gitlab-api-config-missing-url-error',
                     'class' => get_class(),
                     'status_code' => '501',
-                    'message' => $error_message,
                     'connection_key' => $this->connection_key,
-                ]);
+                ]
+            );
 
             throw new ConfigurationException($error_message, 501);
         }
@@ -216,30 +211,26 @@ class ApiClient
     /**
      * Set the access_token class property variable
      *
-     * The access_token variable is defined in `.env` variable `{CONNECTION_KEY}_ACCESS_TOKEN` and is associated with a
-     * connection config defined in config/gitlab-sdk.php.
-     *
-     * @return void
+     * The access_token variable is defined in `.env` variable `GITLAB_{CONNECTION_KEY}_ACCESS_TOKEN` and is associated
+     * with a connection config defined in config/gitlab-sdk.php.
      */
     protected function setAccessToken(): void
     {
         if ($this->connection_config['access_token'] != null) {
             $this->access_token = $this->connection_config['access_token'];
         } else {
-            $error_message = 'The access token for this GitLab connection key ' .
-                'is not defined in your `.env` file. The variable name for the ' .
-                'access token can be found in the connection configuration in ' .
-                '`config/gitlab-sdk.php`. Without this access token, you will ' .
-                'not be able to performed authenticated API calls.';
+            $error_message = 'You need to add the `GITLAB_' . Str::upper($this->connection_key) . '_ACCESS_TOKEN` ' .
+                'variable in your `.env` file so you can perform authenticated API calls.';
 
-            Log::stack((array) config('gitlab-sdk.auth.log_channels'))
-                ->critical($error_message, [
+            Log::stack((array) config('gitlab-sdk.auth.log_channels'))->critical(
+                $error_message,
+                [
                     'event_type' => 'gitlab-api-config-missing-token-error',
                     'class' => get_class(),
                     'status_code' => '501',
-                    'message' => $error_message,
                     'connection_key' => $this->connection_key,
-                ]);
+                ]
+            );
 
             throw new ConfigurationException($error_message, 501);
         }
@@ -247,10 +238,8 @@ class ApiClient
 
     /**
      * Set the request headers for the GitLab API request
-     *
-     * @return void
      */
-    public function setRequestHeaders(): void
+    protected function setRequestHeaders(): void
     {
         // Get Laravel and PHP Version
         $laravel = 'Laravel/' . app()->version();
@@ -262,9 +251,7 @@ class ApiClient
         // Use Laravel collection to search for the package. We will use the array to get the package name (in case it
         // changes with a fork) and return the version key. For production, this will show a release number. In
         // development, this will show the branch name.
-        $composer_package = collect($composer_lock_json['packages'])
-            ->where('name', 'gitlab-it/gitlab-sdk')
-            ->first();
+        $composer_package = collect($composer_lock_json['packages'])->where('name', 'gitlab-it/gitlab-sdk')->first();
 
         // Reformat `gitlab-it/gitlab-sdk` as `GitLabIT-Gitlab-Sdk`
         $composer_package_formatted = Str::title(Str::replace('/', '-', $composer_package['name']));
@@ -280,14 +267,9 @@ class ApiClient
      * Test the connection to the GitLab API
      *
      * @see https://docs.gitlab.com/ee/api/version.html
-     *
-     * @return void
      */
     public function testConnection(): void
     {
-        // Set version to null before making first GET request
-        $this->gitlab_version = null;
-
         // API call to get version from GitLab instance (a simple API endpoint). Logging for is handled by get() method.
         $response = $this->get('/version');
 
@@ -296,32 +278,36 @@ class ApiClient
                 $this->gitlab_version = $response->object->version;
                 break;
             case 401:
-                $error_message = 'The GitLab access token for this instance ' .
-                'key has been configured but is invalid (does not exist on GitLab ' .
-                'instance or has expired). Please generate a new Access Token and ' .
-                'update the variable in your `.env` file. This SDK does not ' .
-                'support unauthenticated GitLab API requests.';
+                $error_message = 'The `GITLAB_' . Str::upper($this->connection_key) . '_ACCESS_TOKEN` has been ' .
+                    'configured but is invalid (does not exist or has expired). Please generate a new Access Token ' .
+                    'and update the variable in your `.env` file.';
 
-                Log::stack((array) config('gitlab-sdk.auth.log_channels'))
-                    ->critical($error_message, [
+                Log::stack((array) config('gitlab-sdk.auth.log_channels'))->critical(
+                    $error_message,
+                    [
                         'event_type' => 'gitlab-api-config-invalid-error',
                         'class' => get_class(),
                         'status_code' => '401',
-                        'message' => $error_message,
                         'connection_key' => $this->connection_key,
-                    ]);
-                break;
+                    ]
+                );
+
+                throw new ConfigurationException(
+                    $error_message,
+                    $response->status->code
+                );
             default:
                 throw new ConfigurationException(
                     'The GitLab API connection test failed for an unknown reason. See logs for details.',
                     $response->status->code
                 );
-                break;
         }
     }
 
     /**
      * GitLab API Get Request
+     *
+     * This method is called from other services to perform a POST request and return a structured object.
      *
      * Example Usage:
      * ```php
@@ -346,7 +332,9 @@ class ApiClient
 
         $response = $this->parseApiResponse($request);
 
-        $this->logResponse('get', $this->base_url . $uri, $response);
+        $query_string = !empty($request_data) ? '?' . http_build_query($request_data) : '';
+        $this->logResponse('get', $this->base_url . $uri . $query_string, $response);
+        $this->throwExceptionIfEnabled('get', $this->base_url . $uri . $query_string, $response);
 
         if ($this->checkForPagination($response->headers) == true) {
             $request->paginated_results = $this->getPaginatedResults($this->base_url . $uri, $request_data);
@@ -360,8 +348,8 @@ class ApiClient
 
     /**
      * GitLab API POST Request
-     * This method is called from other services to perform a POST request and
-     * return a structured object.
+     *
+     * This method is called from other services to perform a POST request and return a structured object.
      *
      * Example Usage:
      * ```php
@@ -375,8 +363,6 @@ class ApiClient
      * @param string $uri The URI with leading slash after `/api/v4`
      *
      * @param array $request_data Optional Post Body array
-     *
-     * @return object
      */
     public function post(string $uri, array $request_data = []): object
     {
@@ -387,12 +373,14 @@ class ApiClient
         $response = $this->parseApiResponse($request);
 
         $this->logResponse('post', $this->base_url . $uri, $response);
+        $this->throwExceptionIfEnabled('post', $this->base_url . $uri, $response);
 
         return $response;
     }
 
     /**
      * GitLab API PUT Request
+     *
      * This method is called from other services to perform a PUT request and
      * return a structured object.
      *
@@ -407,8 +395,6 @@ class ApiClient
      * @param string $uri The URI with leading slash after `/api/v4`
      *
      * @param array $request_data Optional request data to send with PUT request
-     *
-     * @return object
      */
     public function put(string $uri, array $request_data = []): object
     {
@@ -419,12 +405,14 @@ class ApiClient
         $response = $this->parseApiResponse($request);
 
         $this->logResponse('put', $this->base_url . $uri, $response);
+        $this->throwExceptionIfEnabled('put', $this->base_url . $uri, $response);
 
         return $response;
     }
 
     /**
      * GitLab API DELETE Request
+     *
      * This method is called from other services to perform a DELETE request and return a structured object.
      *
      * Example Usage:
@@ -436,8 +424,6 @@ class ApiClient
      * @param string $uri The URI with leading slash after `/api/v4`
      *
      * @param array $request_data Optional request data to send with DELETE request
-     *
-     * @return object
      */
     public function delete(string $uri, array $request_data = []): object
     {
@@ -448,6 +434,7 @@ class ApiClient
         $response = $this->parseApiResponse($request);
 
         $this->logResponse('delete', $this->base_url . $uri, $response);
+        $this->throwExceptionIfEnabled('delete', $this->base_url . $uri, $response);
 
         return $response;
     }
@@ -516,7 +503,7 @@ class ApiClient
      *      "CF-RAY" => "6a7ebcad3ce908db-SEA",
      *  }
      */
-    public function convertHeadersToArray(array $header_response): array
+    protected function convertHeadersToArray(array $header_response): array
     {
         $headers = [];
 
@@ -544,13 +531,9 @@ class ApiClient
      *      True if the response requires multiple pages
      *      False if response is a single page
      */
-    public function checkForPagination(array $headers): bool
+    protected function checkForPagination(array $headers): bool
     {
-        if (array_key_exists('X-Next-Page', $headers)) {
-            return true;
-        }
-
-        return false;
+        return (array_key_exists('X-Next-Page', $headers));
     }
 
     /**
@@ -564,15 +547,15 @@ class ApiClient
      * @return ?string
      *      https://gitlab.example.com/api/v4/projects/8/issues/8/notes?page=3&per_page=3
      */
-    public function generateNextPaginatedResultUrl(array $headers): ?string
+    protected function generateNextPaginatedResultUrl(array $headers): ?string
     {
         if (array_key_exists('Link', $headers)) {
             $links = explode(', ', $headers['Link']);
             foreach ($links as $link_key => $link_url) {
                 if (Str::contains($link_url, 'next')) {
                     // Remove the '<' and '>; rel="next"' that is around the next api_url
-                    // Before: <https://gitlab.example.com/api/v4/projects/8/issues/8/notes?page=3&per_page=3>; rel="next"
-                    // After: https://gitlab.example.com/api/v4/projects/8/issues/8/notes?page=3&per_page=3
+                    // Before: <https://gitlab.com/api/v4/projects/8/issues/8/notes?page=3&per_page=3>; rel="next"
+                    // After: https://gitlab.com/api/v4/projects/8/issues/8/notes?page=3&per_page=3
                     $url = Str::remove('<', $links[$link_key]);
                     $url = Str::remove('>; rel="next"', $url);
                     return $url;
@@ -602,7 +585,7 @@ class ApiClient
      * @return object
      *      An array of the response objects for each page combined casted as an object.
      */
-    public function getPaginatedResults(string $paginated_url, array $request_data = []): object
+    protected function getPaginatedResults(string $paginated_url, array $request_data = []): object
     {
         // Define empty array for adding API results to
         $records = [];
@@ -628,6 +611,7 @@ class ApiClient
             $response = $this->parseApiResponse($request);
 
             $this->logResponse('get', $paginated_url, $response);
+            $this->throwExceptionIfEnabled('get', $paginated_url, $response);
 
             // Loop through each object from the response and add it to the $records array
             foreach ($response->object as $api_record) {
@@ -682,7 +666,7 @@ class ApiClient
      *   }
      * }
      */
-    public function parseApiResponse(object $response): object
+    protected function parseApiResponse(object $response): object
     {
         if (property_exists($response, 'paginated_results')) {
             $json_output = json_encode($response->paginated_results);
@@ -708,32 +692,163 @@ class ApiClient
     }
 
     /**
-     * Handle GitLab API Exception
+     * Create a log entry for an API call
      *
-     * @param \Illuminate\Http\Client\RequestException $exception
-     *      An instance of the exception
+     * This method is called from other methods and create log entry and throw exception
      *
-     * @param string $log_class
-     *      get_class()
+     * @param string $method
+     *      The lowercase name of the method that calls this function (ex. `get`)
      *
-     * @param string $reference
-     *      Reference slug or identifier
+     * @param string $url
+     *      The URL of the API call including the concatenated base URL and URI
      *
-     * @return string Error message
+     * @param object $response
+     *      The HTTP response formatted with $this->parseApiResponse()
      */
-    public function handleException($exception, $log_class, $reference)
+    protected function logResponse(string $method, string $url, object $response): void
     {
-        Log::stack((array) config('glamstack-gitlab.log_channels'))
-            ->error($exception->getMessage(), [
-                'class' => $log_class,
-                'connection_key' => $this->connection_key,
-                'event_type' => 'gitlab-api-response-error',
-                'gitlab_version' => $this->gitlab_version,
-                'message' => $exception->getMessage(),
-                'reference' => $reference,
-                'status_code' => $exception->getCode(),
-            ]);
+        $message = Str::upper($method) . ' ' . $response->status->code . ' ' . $url;
 
-        return $exception->getMessage();
+        $log_context = [
+            'api_endpoint' => $url,
+            'api_method' => Str::upper($method),
+            'class' => get_class(),
+            'connection_key' => $this->connection_key,
+            'event_type' => null,
+            'gitlab_version' => $this->gitlab_version,
+            'status_code' => $response->status->code,
+        ];
+
+        $log_context['event_type'] = match ($response->status->code) {
+            200 => 'gitlab-api-response-info',
+            201 => 'gitlab-api-response-created',
+            202 => 'gitlab-api-response-accepted',
+            204 => 'gitlab-api-response-deleted',
+            400 => 'gitlab-api-response-error-bad-request',
+            401 => 'gitlab-api-response-error-unauthorized',
+            403 => 'gitlab-api-response-error-forbidden',
+            404 => 'gitlab-api-response-error-not-found',
+            405 => 'gitlab-api-response-error-method-not-allowed',
+            412 => 'gitlab-api-response-error-precondition-failed',
+            422 => 'gitlab-api-response-error-unprocessable',
+            429 => 'gitlab-api-response-error-rate-limit',
+            500 => 'gitlab-api-response-error-server'
+        };
+
+        // dd($response->object);
+        if (is_object($response->object) && property_exists($response->object, 'error')) {
+            $log_context['reason'] = $response->object->error;
+        } elseif (!$response->status->successful && isset($response->object->message)) {
+            $log_context['reason'] = $response->json;
+        } elseif (!$response->status->successful) {
+            $log_context['reason'] = null;
+        }
+
+        switch ($response->status->code) {
+            case 200:
+                Log::stack((array) $this->connection_config['log_channels'])->info($message, $log_context);
+                break;
+            case 201:
+                Log::stack((array) $this->connection_config['log_channels'])->info($message, $log_context);
+                break;
+            case 202:
+                Log::stack((array) $this->connection_config['log_channels'])->info($message, $log_context);
+                break;
+            case 204:
+                Log::stack((array) $this->connection_config['log_channels'])->info($message, $log_context);
+                break;
+            case 400:
+                Log::stack((array) $this->connection_config['log_channels'])->warning($message, $log_context);
+                break;
+            case 401:
+                $message = 'The `GITLAB_' . Str::upper($this->connection_key) . '_ACCESS_TOKEN` has been ' .
+                    'configured but is invalid (does not exist or has expired). Please generate a new Access Token ' .
+                    'and update the variable in your `.env` file.';
+                Log::stack((array) $this->connection_config['log_channels'])->error($message, $log_context);
+                break;
+            case 403:
+                Log::stack((array) $this->connection_config['log_channels'])->error($message, $log_context);
+                break;
+            case 404:
+                Log::stack((array) $this->connection_config['log_channels'])->warning($message, $log_context);
+                break;
+            case 412:
+                Log::stack((array) $this->connection_config['log_channels'])->error($message, $log_context);
+                break;
+            case 422:
+                Log::stack((array) $this->connection_config['log_channels'])->error($message, $log_context);
+                break;
+            case 429:
+                $log_context['rate_limit_limit'] = $response->headers['RateLimit-Limit'] ?? null;
+                $log_context['rate_limit_observed'] = $response->headers['RateLimit-Observed'] ?? null;
+                $log_context['rate_limit_remaining'] = $response->headers['RateLimit-Remaining'] ?? null;
+                $log_context['rate_limit_reset_timestamp'] = $response->headers['RateLimit-Reset'] ?? null;
+                $log_context['rate_limit_reset_datetime'] = $response->headers['RateLimit-ResetTime'] ?? null;
+
+                if (isset($response->headers['RateLimit-Reset'])) {
+                    $time_remaining = Carbon::parse($response->headers['RateLimit-Reset'])->diffInSeconds();
+                    $log_context['rate_limit_reset_secs_remaining'] = $time_remaining;
+                    $message = 'Rate Limit Exceeded. Please try again in ' . $time_remaining . ' seconds';
+                } else {
+                    $log_context['rate_limit_reset_secs_remaining'] = null;
+                }
+
+                Log::stack((array) $this->connection_config['log_channels'])->warning($message, $log_context);
+                break;
+            case 500:
+                Log::stack((array) $this->connection_config['log_channels'])->error($message, $log_context);
+                break;
+            default:
+                Log::stack((array) $this->connection_config['log_channels'])->error($message, $log_context);
+                break;
+        }
+    }
+
+    /**
+     * Throw an exception for a 4xx or 5xx response for an API call
+     *
+     * This method checks whether the .env variable or config value for `GITLAB_{CONNECTION_KEY}_EXCEPTIONS=true`
+     *
+     * @param string $method
+     *      The lowercase name of the method that calls this function (ex. `get`)
+     *
+     * @param string $url
+     *      The URL of the API call including the concatenated base URL and URI
+     *
+     * @param object $response
+     *      The HTTP response formatted with $this->parseApiResponse()
+     */
+    protected function throwExceptionIfEnabled(string $method, string $url, object $response): void
+    {
+        if (config('gitlab-sdk.connections.' . $this->connection_key . '.exceptions') == true) {
+            $message = Str::upper($method) . ' ' . $response->status->code . ' ' . $url;
+
+            // If API error includes a message, append friendly message to existing request string
+            if (property_exists($response->object, 'message')) {
+                $message .= ' - ' . $response->object->message;
+            }
+
+            switch ($response->status->code) {
+                case 400:
+                    throw new BadRequestException($response->json);
+                case 401:
+                    $message = 'The `GITLAB_' . Str::upper($this->connection_key) . '_ACCESS_TOKEN` has been ' .
+                        'configured but is invalid (does not exist or has expired). Please generate a new Access ' .
+                        'Token and update the variable in your `.env` file.';
+                    throw new UnauthorizedException($message);
+                case 403:
+                    throw new ForbiddenException($message);
+                case 404:
+                    throw new NotFoundException($message);
+                case 412:
+                    throw new PreconditionFailedException($message);
+                case 422:
+                    throw new UnprocessableException($message);
+                case 429:
+                    throw new RateLimitException($message);
+                case 500:
+                    throw new ServerErrorException($response->json);
+            }
+        }
     }
 }
