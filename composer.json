@@ -1,6 +1,7 @@
 {
-    "name": "glamstack/gitlab-sdk",
+    "name": "gitlab-it/gitlab-sdk",
     "description": "GitLab API SDK for Laravel",
+    "license": "MIT",
     "authors": [
         {
             "name": "Dillon Wheeler",
@@ -14,22 +15,26 @@
         }
     ],
     "require": {
-        "php": ">=8.0",
-        "laravel/framework": ">=9.1"
+        "php": "^8.0",
+        "illuminate/config": "^8.0 || ^9.0 || ^10.0",
+        "illuminate/http": "^8.0 || ^9.0 || ^10.0",
+        "illuminate/log": "^8.0 || ^9.0 || ^10.0",
+        "illuminate/support": "^8.0 || ^9.0 || ^10.0",
+        "nesbot/carbon": "^2.62"
     },
     "require-dev": {
-        "nunomaduro/larastan": "^1.0",
-        "orchestra/testbench": "^7.6"
+        "nunomaduro/larastan": "^1.0 || ^2.0",
+        "orchestra/testbench": "^6.23 || ^7.0 || ^8.0"
     },
     "autoload": {
         "psr-4": {
-            "Glamstack\\Gitlab\\": "src/"
+            "GitlabIt\\Gitlab\\": "src/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Glamstack\\Gitlab\\GitlabServiceProvider"
+                "GitlabIt\\Gitlab\\GitlabServiceProvider"
             ]
         }
     }
