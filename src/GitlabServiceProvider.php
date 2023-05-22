@@ -1,6 +1,6 @@
 <?php
 
-namespace Glamstack\Gitlab;
+namespace GitlabIt\Gitlab;
 
 use Illuminate\Support\ServiceProvider;
 
@@ -8,14 +8,15 @@ class GitlabServiceProvider extends ServiceProvider
 {
     // use ServiceBindings;
 
-    public function boot() : void
+    public function boot(): void
     {
         $this->bootRoutes();
+        $this->publishConfigFile();
     }
 
     public function register()
     {
-        $this->registerConfig();
+        $this->mergeConfig();
         $this->registerServices();
     }
 
@@ -29,33 +30,28 @@ class GitlabServiceProvider extends ServiceProvider
         //$this->loadRoutesFrom(__DIR__.'/Routes/console.php');
     }
 
-    protected function registerConfig() : void
+    /**
+     * Merge package config file into application config file
+     *
+     * This allows users to override any module configuration values with their
+     * own values in the application config file.
+     */
+    protected function mergeConfig(): void
     {
+        $this->mergeConfigFrom(__DIR__ . '/Config/gitlab-sdk.php', 'gitlab-sdk');
+    }
 
-        //
-        // Merge config file into application config
-        //
-        // This allows users to override any module configuration values with
-        // their own values in the application config file.
-        //
-        $this->mergeConfigFrom(
-            __DIR__.'/Config/glamstack-gitlab.php',
-            'glamstack-gitlab'
-        );
-
-        if (! $this->app->runningInConsole()) {
-            return;
+    /**
+     * Publish config file to application
+     *
+     * Once the `php artisan vendor::publish` command is run, you can use the
+     * configuration file values `$value = config('okta-sdk.option');`
+     */
+    protected function publishConfigFile(): void
+    {
+        if ($this->app->runningInConsole()) {
+            $this->publishes([__DIR__ . '/Config/gitlab-sdk.php' => config_path('gitlab-sdk.php')], 'gitlab-sdk');
         }
-
-        //
-        // Publish config file to application
-        //
-        // Once the `php artisan vendor::publish` command is run, you can use
-        // the configuration file values `$value = config('glamstack-gitlab.option');`
-        //
-        $this->publishes([
-            __DIR__.'/Config/glamstack-gitlab.php' => config_path('glamstack-gitlab.php'),
-        ], 'glamstack-gitlab');
     }
 
     /**
@@ -65,15 +61,12 @@ class GitlabServiceProvider extends ServiceProvider
      */
     protected function registerServices()
     {
-        if (! property_exists($this, 'serviceBindings')) {
-            return;
-        }
-
-        foreach ($this->serviceBindings as $key => $value) {
-            is_numeric($key)
-                    ? $this->app->singleton($value)
-                    : $this->app->singleton($key, $value);
+        if (property_exists($this, 'serviceBindings')) {
+            foreach ($this->serviceBindings as $key => $value) {
+                is_numeric($key)
+                        ? $this->app->singleton($value)
+                        : $this->app->singleton($key, $value);
+            }
         }
     }
 }
-
