@@ -251,7 +251,7 @@ You can optionally create a "bot"/"service account" user that has explicitly gra
 
 This is useful if you do not want API calls performed on behalf of a specific human user. You will need to create a Personal Access Token while signed into GitLab as the service account user.
 
-### Least Privilege
+#### Least Privilege
 
 If you need to use different tokens for each group or project for least privilege security reasons, you can customize `config/gitlab-sdk.php` to add the same GitLab instance multiple times with different instance keys (ex. `project_alias1`, `project_alias2`, `group_alias1`, `group_alias2`.
 
@@ -273,19 +273,6 @@ You simply need to provide the instance key when invoking the SDK.
 
 ```php
 $gitlab_api = new \GitlabIt\Gitlab\ApiClient('project_alias1');
-$project = $gitlab_api->get('/projects/123456789')->object();
-```
-
-Alternatively, you can provide a different API key when initializing the service using the second argument. The API token from `config/gitlab-sdk.php` is used if the second argument is not provided. This is helpful if your GitLab Access Tokens are stored in your database and are not hard coded into your `.env` file.
-
-```php
-// Get the access token from a model in your application.
-// Disclaimer: This is an example and is not a feature of the SDK.
-$demo_project = App\Models\DemoProject::where('id', $id)->firstOrFail();
-$access_token = decrypt($demo_project->gitlab_access_token);
-
-// Use the SDK to connect using your access token.
-$gitlab_api = new \GitlabIt\Gitlab\ApiClient('gitlab_com', $access_token);
 $project = $gitlab_api->get('/projects/123456789')->object();
 ```
 
@@ -325,6 +312,8 @@ Update the `channels.stack.channels` array to include the array key (ex. `gitlab
 
 ## Initializing the API Connection
 
+### Default Connection
+
 To use the default connection, you do **_not_** need to provide the **_connection key_** to the `ApiClient`. This allows you to build your application without hard coding a connection key and simply update the `.env` variable.
 
 ```php
@@ -336,7 +325,7 @@ $gitlab_api = new \GitlabIt\Gitlab\ApiClient();
 $projects = $gitlab_api->get('/projects');
 ```
 
-#### Using a Specific Connection per API Call
+### Using a Specific Connection per API Call
 
 If you want to use a specific **_connection key_** when using the `ApiClient` that is different from the `GITLAB_DEFAULT_CONNECTION` `.env` variable, you can pass any **_connection key_** that has been configured in `config/okta-sdk.php` as the first construct argument for the `ApiClient`.
 
@@ -394,8 +383,8 @@ You can make an API request to any of the resource endpoints in the [GitLab REST
 #### Inline Usage
 
 ```php
-// Initialize the SDK
-$gitlab_api = new \GitlabIt\Gitlab\ApiClient('gitlab_com');
+// Initialize the SDK using the default connection
+$gitlab_api = new \GitlabIt\Gitlab\ApiClient();
 ```
 
 ### GET Requests
@@ -599,7 +588,7 @@ $project = $gitlab_api->get('/projects/32589035');
 $project->headers;
 ```
 
-```json
+```
 {
     +"Date": "Thu, 06 Jan 2022 21:40:18 GMT",
     +"Content-Type": "application/json",
@@ -648,7 +637,7 @@ $project = $gitlab_api->get('/projects/32589035');
 $project->json;
 ```
 
-```json
+```
 "{"id":32589035,"description":"","name":"gitlab-sdk","name_with_namespace":"gitlab-it \/ gitlab-sdk","path":"gitlab-sdk","path_with_namespace":"gitlab-it\/gitlab-sdk"}"
 ```
 
@@ -659,7 +648,7 @@ $project = $gitlab_api->get('/projects/32589035');
 $project->object;
 ```
 
-```php
+```
 {
   +"id": 32589035
   +"description": ""
@@ -679,7 +668,7 @@ $project = $gitlab_api->get('/projects/32589035');
 $project->status;
 ```
 
-```php
+```
 {
   +"code": 200
   +"ok": true
