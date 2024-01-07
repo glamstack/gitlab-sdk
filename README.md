@@ -961,7 +961,7 @@ $issue_titles_authors = collect(ApiClient::get('projects/' . $project_id . '/iss
 
 #### Using Dot Notation for Nested Array Attributes
 
-If you only want to return a string, you can use dot notation when using the pluck method. You can also use dot notation with most other collection methods include [where](https://laravel.com/docs/10.x/collections#method-where) and [groupBy](https://laravel.com/docs/10.x/collections#method-groupBy) methods.
+If you only want to return a string, you can use dot notation when using the pluck method. You can also use dot notation with most other collection methods including [where](https://laravel.com/docs/10.x/collections#method-where) and [groupBy](https://laravel.com/docs/10.x/collections#method-groupBy) methods.
 
 ```php
 $issue_titles_authors = collect(ApiClient::get('projects/' . $project_id . '/issues')->data)
@@ -1203,12 +1203,12 @@ $users = collect(ApiClient::get('projects/' . $project_id . '/issues')->data)
 //     [
 //         "id" => "111",
 //         "title" => "Donec malesuada leo et efficitur imperdiet",
-//         "author_name" => "Dade Murphy",
+//         "author_name" => "Kate Libby",
 //     ],
 //     [
 //         "id" => "219",
 //         "title" => "Aliquam dignissim tortor faucibus",
-//         "author_name" => "Dade Murphy",
+//         "author_name" => "Kate Libby",
 //     ]
 // ],
 // "Paul Cook" => [
@@ -1316,28 +1316,36 @@ cool-group/my-cool-project
 
 ### Errors
 
-#### 400 Bad Request
-
-```plain
-TODO
-```
-
 #### 401 Unauthorized
 
 ##### Environment Variables Not Set
 
 ```plain
-TODO
+[YYYY-MM-DD HH:II:SS] local.CRITICAL: ApiClient::validateConnection Error {"event_type":"gitlab.api.validate.error","method":"Provisionesta\\Gitlab\\ApiClient::validateConnection","errors":["The url field is required.","The token field is required."]}
+
+```
+
+```plain
+Provisionesta\Gitlab\Exceptions\ConfigurationException
+
+Gitlab API configuration validation error. This occurred in Provisionesta\Gitlab\ApiClient::validateConnection. (Solution) The url field is required. The token field is required.
 ```
 
 ##### Invalid Token
 
 ```plain
-TODO
+[YYYY-MM-DD HH:II:SS] local.ERROR: ApiClient::get Client Error {"event_type":"gitlab.api.get.error.unauthorized","method":"Provisionesta\\Gitlab\\ApiClient::get","errors":{"message":"401 Unauthorized"},"event_ms":225,"metadata":{"url":"https://gitlab.com/api/v4/projects/12345678","rate_limit_remaining":"1999"}}
+
+```
+
+```plain
+Provisionesta\Gitlab\Exceptions\UnauthorizedException
+
+The `GITLAB_API_TOKEN` has been configured but is invalid. (Reason) This usually happens if it does not exist, expired, or does not have permissions. (Solution) Please generate a new API Token and update the variable in your `.env` file.
 ```
 
 #### 404 Not Found
 
 ```plain
-TODO
+[YYYY-MM-DD HH:II:SS] local.WARNING: ApiClient::get Client Error {"event_type":"gitlab.api.get.warning.not-found","method":"Provisionesta\\Gitlab\\ApiClient::get","errors":{"message":"404 Project Not Found"},"event_ms":253,"metadata":{"url":"https://gitlab.com/api/v4/projects/12345678"}}
 ```
