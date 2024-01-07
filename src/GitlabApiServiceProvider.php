@@ -50,7 +50,12 @@ class GitlabApiServiceProvider extends ServiceProvider
     protected function publishConfigFile(): void
     {
         if ($this->app->runningInConsole()) {
-            $this->publishes([__DIR__ . '/Config/gitlab-api-client.php' => config_path('gitlab-api-client.php')], 'gitlab-api-client');
+            $this->publishes(
+                [
+                    __DIR__ . '/Config/gitlab-api-client.php' => config_path('gitlab-api-client.php')
+                ],
+                'gitlab-api-client'
+            );
         }
     }
 

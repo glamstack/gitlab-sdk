@@ -10,19 +10,8 @@ parameters:
     level: 9
 
     ignoreErrors:
-        - '#Call to an undefined method object::headers\(\)#'
-        - '#Call to an undefined method object::json\(\)#'
-        - '#Call to an undefined method object::object\(\)#'
-        - '#Call to an undefined method object::status\(\)#'
-        - '#Call to an undefined method object::ok\(\)#'
-        - '#Call to an undefined method object::successful\(\)#'
-        - '#Call to an undefined method object::failed\(\)#'
-        - '#Call to an undefined method object::serverError\(\)#'
-        - '#Call to an undefined method object::clientError\(\)#'
-        - '#Access to an undefined property object::\$paginated_results#'
-        - '#Cannot access property \$status on object\|string#'
-        - '#Cannot access property \$object on object\|string#'
-        - '#Access to an undefined property object::\$status#'
+        - '#Access to an undefined property object::\$headers.#'
+        - '#Access to an undefined property object::\$status.#'
     excludePaths:
         - ./*/*/FileToBeExcluded.php
 
