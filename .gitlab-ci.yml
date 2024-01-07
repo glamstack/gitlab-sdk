@@ -56,7 +56,7 @@ phpstan:
   extends: .laravel
   allow_failure: true
   script:
-    - php vendor/bin/phpstan analyse src/ --level=5 --xdebug
+    - php vendor/bin/phpstan analyse src/ --level=5
 
 # Unit Tests
 #unit_test:
