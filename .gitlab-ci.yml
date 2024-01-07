@@ -56,7 +56,7 @@ phpstan:
   extends: .laravel
   allow_failure: true
   script:
-    - php vendor/bin/phpstan analyse src/ --level=5
+    - php vendor/bin/phpstan analyse src/ --level=5 --memory-limit=2G
 
 # Unit Tests
 #unit_test:
