@@ -611,6 +611,7 @@ class ApiClient
     private static function generateNextPaginatedResultUrl(
         array $headers,
     ): ?string {
+        $links = [];
         if (array_key_exists('Link', $headers)) {
             $links = explode(', ', $headers['Link']);
         } elseif (array_key_exists('link', $headers)) {
@@ -1005,6 +1006,7 @@ class ApiClient
         object $response
     ): void {
         $rate_limit_remaining = null;
+        $percent_remaining = null;
         if (isset($response->headers['RateLimit-Remaining'])) {
             $rate_limit_remaining = (int) $response->headers['RateLimit-Remaining'];
             $rate_limit = (int) $response->headers['RateLimit-Limit'];
