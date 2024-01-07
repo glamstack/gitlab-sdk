@@ -1,6 +1,6 @@
 <?php
 
-namespace GitlabIt\Gitlab\Exceptions;
+namespace Provisionesta\Gitlab\Exceptions;
 
 use Exception;
 
