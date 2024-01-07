@@ -1063,6 +1063,7 @@ class ApiClient
     ): void {
 
         $rate_limit_remaining = null;
+        $percent_remaining = null;
         if (isset($response->headers['RateLimit-Remaining'])) {
             $rate_limit_remaining = (int) $response->headers['RateLimit-Remaining'];
             $rate_limit = (int) $response->headers['RateLimit-Limit'];
