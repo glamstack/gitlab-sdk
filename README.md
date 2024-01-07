@@ -812,16 +812,19 @@ An exception is thrown for any 4xx or 5xx responses. All responses are automatic
 
 ### Exceptions
 
-| Code | Exception Class                                             |
-|------|-------------------------------------------------------------|
+| Code | Exception Class                                               |
+|------|---------------------------------------------------------------|
+| N/A  | `Provisionesta\Gitlab\Exceptions\ConfigurationException`      |
 | 400  | `Provisionesta\Gitlab\Exceptions\BadRequestException`         |
 | 401  | `Provisionesta\Gitlab\Exceptions\UnauthorizedException`       |
 | 403  | `Provisionesta\Gitlab\Exceptions\ForbiddenException`          |
 | 404  | `Provisionesta\Gitlab\Exceptions\NotFoundException`           |
+| 409  | `Provisionesta\Gitlab\Exceptions\ConflictException`           |
 | 412  | `Provisionesta\Gitlab\Exceptions\PreconditionFailedException` |
 | 422  | `Provisionesta\Gitlab\Exceptions\UnprocessableException`      |
 | 429  | `Provisionesta\Gitlab\Exceptions\RateLimitException`          |
 | 500  | `Provisionesta\Gitlab\Exceptions\ServerErrorException`        |
+| 503  | `Provisionesta\Gitlab\Exceptions\ServiceUnavailableException` |
 
 ### Catching Exceptions
 

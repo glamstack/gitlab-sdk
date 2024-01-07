@@ -17,6 +17,7 @@ use Provisionesta\Gitlab\Exceptions\NotFoundException;
 use Provisionesta\Gitlab\Exceptions\PreconditionFailedException;
 use Provisionesta\Gitlab\Exceptions\RateLimitException;
 use Provisionesta\Gitlab\Exceptions\ServerErrorException;
+use Provisionesta\Gitlab\Exceptions\ServiceUnavailableException;
 use Provisionesta\Gitlab\Exceptions\UnauthorizedException;
 use Provisionesta\Gitlab\Exceptions\UnprocessableException;
 
@@ -982,6 +983,8 @@ class ApiClient
                     throw new RateLimitException($message);
                 case 500:
                     throw new ServerErrorException(json_encode($response->data));
+                case 503:
+                    throw new ServiceUnavailableException();
             }
         }
     }
