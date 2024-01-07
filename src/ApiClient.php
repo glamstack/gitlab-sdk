@@ -1,346 +1,219 @@
 <?php
 
-namespace GitlabIt\Gitlab;
+namespace Provisionesta\Gitlab;
 
 use Carbon\Carbon;
-use GitlabIt\Gitlab\Exceptions\BadRequestException;
-use GitlabIt\Gitlab\Exceptions\ConfigurationException;
-use GitlabIt\Gitlab\Exceptions\ForbiddenException;
-use GitlabIt\Gitlab\Exceptions\NotFoundException;
-use GitlabIt\Gitlab\Exceptions\PreconditionFailedException;
-use GitlabIt\Gitlab\Exceptions\RateLimitException;
-use GitlabIt\Gitlab\Exceptions\ServerErrorException;
-use GitlabIt\Gitlab\Exceptions\UnauthorizedException;
-use GitlabIt\Gitlab\Exceptions\UnprocessableException;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Provisionesta\Audit\Log;
+use Provisionesta\Gitlab\Exceptions\BadRequestException;
+use Provisionesta\Gitlab\Exceptions\ConfigurationException;
+use Provisionesta\Gitlab\Exceptions\ConflictException;
+use Provisionesta\Gitlab\Exceptions\ForbiddenException;
+use Provisionesta\Gitlab\Exceptions\MethodNotAllowedException;
+use Provisionesta\Gitlab\Exceptions\NotFoundException;
+use Provisionesta\Gitlab\Exceptions\PreconditionFailedException;
+use Provisionesta\Gitlab\Exceptions\RateLimitException;
+use Provisionesta\Gitlab\Exceptions\ServerErrorException;
+use Provisionesta\Gitlab\Exceptions\ServiceUnavailableException;
+use Provisionesta\Gitlab\Exceptions\UnauthorizedException;
+use Provisionesta\Gitlab\Exceptions\UnprocessableException;
 
 class ApiClient
 {
-    public const API_VERSION = 4;
-    public const PER_PAGE = 100;
-    public const REQUIRED_CONFIG_PARAMETERS = ['base_url', 'access_token', 'log_channels'];
-
-    private string $access_token;
-    private string $base_url;
-    private array $connection_config;
-    private string $connection_key;
-    private ?string $gitlab_version = null;
-    private array $request_headers;
-
     /**
-     * Standard initialization construct method.
+     * Test the connection to the GitLab API using a simple API endpoint
      *
-     * @param string|null $connection_key
-     *      The connection key to use for initialization
+     * Example Usage:
+     * ```php
+     * use Provisionesta\Gitlab\ApiClient;
+     * ApiClient::testConnection();
+     * ```
      *
-     * @param array $connection_config
-     *      Customizable connection configuration array
+     * @link https://docs.gitlab.com/ee/api/version.html
      *
-     * @throws ConfigurationException
-     *      Thrown if there is a problem with the initialization configuration
+     * @param array $connection (optional)
+     *      An array with `url` and `token`.
+     *      If not set, the `config('gitlab-api-client')` array will be used that
+     *      uses the GITLAB_API_* variables from your .env file.
      */
-    public function __construct(
-        string $connection_key = null,
-        array $connection_config = []
-    ) {
-        if (empty($connection_config)) {
-            $this->setConnectionKeyConfiguration($connection_key);
-        } else {
-            $this->setCustomConfiguration($connection_config);
-        }
+    public static function testConnection(array $connection = []): bool
+    {
+        $response = self::get(
+            uri: 'version',
+            connection: $connection
+        );
 
-        // Set the class access_token variable
-        $this->setAccessToken();
+        Log::create(
+            event_type: 'gitlab.api.test.success',
+            level: 'debug',
+            message: 'Success',
+            method: __METHOD__,
+            transaction: false
+        );
 
-        // Set the class base_url variable
-        $this->setBaseUrl();
-
-        // Set request headers
-        $this->setRequestHeaders();
-
-        // Test API Connection
-        $this->testConnection();
+        return true;
     }
 
     /**
-     * Set the configuration utilizing the `connection_key`
+     * Encode a string with GitLab URL Encoding Syntax
      *
-     * This method will utilize the `connection_key` provided in the construct method. The `connection_key` will
-     * correspond to a `connection` in the configuration file.
+     * When using project and file paths in URLs or query string URLs, you need
+     * to use GitLab's URL encoding syntax.
      *
-     * @param ?string $connection_key
-     *      The connection key to use for configuration.
+     * Example Usage:
+     * ```
+     * use Provisionesta\Gitlab\ApiClient;
+     *
+     * $response = ApiClient::get(
+     *     uri: 'projects/' . ApiClient::urlencode('group_name/child_group_name/project_name')
+     * );
+     *
+     * $response = ApiClient::get(
+     *     uri: implode('', [
+     *         'projects/' . $project_id . '/repository/files/',
+     *         ApiClient::urlencode('app/Actions/ClassName.php'),
+     *         '?ref=master'
+     *     ])
+     * );
+     * ```
+     *
+     * @link https://docs.gitlab.com/ee/api/rest/index.html#namespaced-path-encoding
+     * @link https://docs.gitlab.com/ee/api/rest/index.html#file-path-branches-and-tags-name-encoding
+     *
+     * @param string $string
      */
-    protected function setConnectionKeyConfiguration(?string $connection_key): void
+    public static function urlencode(string $string): string
     {
-        $this->setConnectionKey($connection_key);
-        $this->setConnectionConfig();
-    }
+        $string = urlencode($string);
+        $string = str_replace('.', '%2E', $string);
+        $string = str_replace('-', '%2D', $string);
+        $string = str_replace('/', '%2F', $string);
 
-    /**
-     * Set the configuration utilizing the `connection_config`
-     *
-     * This method will utilize the `connection_config` array provided in the construct method. The `connection_config`
-     * array keys will have to match the `REQUIRED_CONFIG_PARAMETERS` array. The connection key will be set to custom
-     * and ignored for the remainder of the SDK usage.
-     *
-     * @param array $connection_config
-     *      Array that contains the required parameters for the connection configuration
-     */
-    protected function setCustomConfiguration(array $connection_config): void
-    {
-        $this->validateConnectionConfigArray($connection_config);
-        $this->setConnectionKey('custom');
-        $this->setConnectionConfig($connection_config);
-    }
-
-    /**
-     * Validate that array keys in `REQUIRED_CONFIG_PARAMETERS` exists in the `connection_config`
-     *
-     * Loop through each of the required parameters in `REQUIRED_CONFIG_PARAMETERS` and verify that each of them are
-     * contained in the provided `connection_config` array. If there is a key missing an error will be logged.
-     *
-     * @param array $connection_config
-     *      The connection configuration array provided to the `construct` method.
-     */
-    protected function validateConnectionConfigArray(array $connection_config): void
-    {
-        foreach (self::REQUIRED_CONFIG_PARAMETERS as $parameter) {
-            if (!array_key_exists($parameter, $connection_config)) {
-                $error_message = 'The GitLab ' . $parameter . ' is not defined in the ApiClient construct ' .
-                    'connection_config array provided. This is a required parameter to be passed in not using the ' .
-                    'configuration file and connection_key initialization method.';
-            } else {
-                $error_message = 'The GitLab SDK connection_config array provided in the ApiClient construct ' .
-                    'connection_config array size should be ' . count(self::REQUIRED_CONFIG_PARAMETERS) . 'but ' .
-                    count($connection_config) . ' array keys were provided.';
-            }
-
-            Log::stack((array) config('gitlab-sdk.auth.log_channels'))->critical(
-                $error_message,
-                [
-                    'event_type' => 'gitlab-api-config-missing-error',
-                    'class' => get_class(),
-                    'status_code' => '501',
-                    'connection_url' => $connection_config['base_url'],
-                ]
-            );
-
-            throw new ConfigurationException($error_message, 501);
-        }
-    }
-
-    /**
-     * Set the connection_key class property variable
-     *
-     * @param ?string $connection_key (Optional)
-     *      The connection key to use from config/gitlab-sdk.php. If not set, it will use the default connection set in
-     *      the GITLAB_DEFAULT_CONNECTION `.env` variable or config/gitlab-sdk.php if not set.
-     */
-    protected function setConnectionKey(string $connection_key = null): void
-    {
-        if ($connection_key == null) {
-            $this->connection_key = config('gitlab-sdk.auth.default_connection');
-        } else {
-            $this->connection_key = $connection_key;
-        }
-    }
-
-    /**
-     * Set the connection_config class property array
-     *
-     * Define an array in the class using the connection configuration in the gitlab-sdk.php connections array. If
-     * connection key is not specified, an error log will be created and a 501 exception error will be thrown.
-     *
-     * @param array $custom_configuration
-     *      Custom configuration array for SDK initialization
-     */
-    protected function setConnectionConfig(array $custom_configuration = []): void
-    {
-        if (array_key_exists($this->connection_key, config('gitlab-sdk.connections')) && empty($custom_configuration)) {
-            $this->connection_config = config('gitlab-sdk.connections.' . $this->connection_key);
-        } elseif ($custom_configuration) {
-            $this->connection_config = $custom_configuration;
-        } else {
-            $error_message = 'The `' . $this->connection_key . '` connection key is not defined in ' .
-                '`config/gitlab-sdk.php` connections array.';
-
-            Log::stack((array) config('gitlab-sdk.auth.log_channels'))->critical(
-                $error_message,
-                [
-                    'event_type' => 'gitlab-api-config-missing-key-error',
-                    'class' => get_class(),
-                    'status_code' => '501',
-                    'connection_key' => $this->connection_key,
-                ]
-            );
-
-            throw new ConfigurationException($error_message, 501);
-        }
-    }
-
-    /**
-     * Set the base_url class property variable
-     *
-     * The base_url variable is defined in `.env` variable `GITLAB_{CONNECTION_KEY}_BASE_URL` or config/gitlab-sdk.php
-     */
-    protected function setBaseUrl(): void
-    {
-        if ($this->connection_config['base_url'] != null) {
-            $this->base_url = $this->connection_config['base_url'] . '/api/v' . self::API_VERSION;
-        } else {
-            $error_message = 'You need to add the `GITLAB_' . Str::upper($this->connection_key) . '_BASE_URL` ' .
-                'variable in your `.env` file (ex. `https://gitlab.com` or `https://gitlab.example.com`).';
-
-            Log::stack((array) config('gitlab-sdk.auth.log_channels'))->critical(
-                $error_message,
-                [
-                    'event_type' => 'gitlab-api-config-missing-url-error',
-                    'class' => get_class(),
-                    'status_code' => '501',
-                    'connection_key' => $this->connection_key,
-                ]
-            );
-
-            throw new ConfigurationException($error_message, 501);
-        }
-    }
-
-    /**
-     * Set the access_token class property variable
-     *
-     * The access_token variable is defined in `.env` variable `GITLAB_{CONNECTION_KEY}_ACCESS_TOKEN` and is associated
-     * with a connection config defined in config/gitlab-sdk.php.
-     */
-    protected function setAccessToken(): void
-    {
-        if ($this->connection_config['access_token'] != null) {
-            $this->access_token = $this->connection_config['access_token'];
-        } else {
-            $error_message = 'You need to add the `GITLAB_' . Str::upper($this->connection_key) . '_ACCESS_TOKEN` ' .
-                'variable in your `.env` file so you can perform authenticated API calls.';
-
-            Log::stack((array) config('gitlab-sdk.auth.log_channels'))->critical(
-                $error_message,
-                [
-                    'event_type' => 'gitlab-api-config-missing-token-error',
-                    'class' => get_class(),
-                    'status_code' => '501',
-                    'connection_key' => $this->connection_key,
-                ]
-            );
-
-            throw new ConfigurationException($error_message, 501);
-        }
-    }
-
-    /**
-     * Set the request headers for the GitLab API request
-     */
-    protected function setRequestHeaders(): void
-    {
-        // Get Laravel and PHP Version
-        $laravel = 'Laravel/' . app()->version();
-        $php = 'PHP/' . phpversion();
-
-        // Decode the composer.lock file
-        $composer_lock_json = json_decode((string) file_get_contents(base_path('composer.lock')), true);
-
-        // Use Laravel collection to search for the package. We will use the array to get the package name (in case it
-        // changes with a fork) and return the version key. For production, this will show a release number. In
-        // development, this will show the branch name.
-        $composer_package = collect($composer_lock_json['packages'])->where('name', 'gitlab-it/gitlab-sdk')->first();
-
-        // Reformat `gitlab-it/gitlab-sdk` as `GitLabIT-Gitlab-Sdk`
-        $composer_package_formatted = Str::title(Str::replace('/', '-', $composer_package['name']));
-        $package = $composer_package_formatted . '/' . $composer_package['version'];
-
-        // Define request headers
-        $this->request_headers = [
-            'User-Agent' => $package . ' ' . $laravel . ' ' . $php
-        ];
-    }
-
-    /**
-     * Test the connection to the GitLab API
-     *
-     * @see https://docs.gitlab.com/ee/api/version.html
-     */
-    public function testConnection(): void
-    {
-        // API call to get version from GitLab instance (a simple API endpoint). Logging for is handled by get() method.
-        $response = $this->get('/version');
-
-        switch ($response->status->code) {
-            case 200:
-                $this->gitlab_version = $response->object->version;
-                break;
-            case 401:
-                $error_message = 'The `GITLAB_' . Str::upper($this->connection_key) . '_ACCESS_TOKEN` has been ' .
-                    'configured but is invalid (does not exist or has expired). Please generate a new Access Token ' .
-                    'and update the variable in your `.env` file.';
-
-                Log::stack((array) config('gitlab-sdk.auth.log_channels'))->critical(
-                    $error_message,
-                    [
-                        'event_type' => 'gitlab-api-config-invalid-error',
-                        'class' => get_class(),
-                        'status_code' => '401',
-                        'connection_key' => $this->connection_key,
-                    ]
-                );
-
-                throw new ConfigurationException(
-                    $error_message,
-                    $response->status->code
-                );
-            default:
-                throw new ConfigurationException(
-                    'The GitLab API connection test failed for an unknown reason. See logs for details.',
-                    $response->status->code
-                );
-        }
+        return $string;
     }
 
     /**
      * GitLab API Get Request
      *
-     * This method is called from other services to perform a POST request and return a structured object.
-     *
      * Example Usage:
      * ```php
-     * $gitlab_api = new \GitlabIt\Gitlab\ApiClient('gitlab_com');
-     * return $gitlab_api->get('/groups/' . $id);
-     * ```
-     * @param string $uri
-     *      The URI with leading slash after `/api/v4`
+     * use Provisionesta\Gitlab\ApiClient;
      *
-     * @param array $request_data
-     *      Optional query data to apply to GET request
+     * $response = ApiClient::get(
+     *     uri: 'users/' . $id
+     * );
+     * ```
+     *
+     * @param string $uri
+     *      The URI with or without leading slash after `/api/v4/`
+     *
+     * @param array $data (optional)
+     *      Query data to apply to GET request
+     *
+     * @param array $connection (optional)
+     *      An array with `url` and `token`.
+     *      If not set, the `config('gitlab-api-client')` array will be used that
+     *      uses the GITLAB_API_* variables from your .env file.
+     *
+     * @param int $per_page
+     *      The number of results for each paginated request. The default for the API is 20. To avoid rate limits, we
+     *      increase this to 100. This can be overridden by passing the argument in the `get()` method.
      *
      * @return object
-     *      See parseApiResponse() method. The content and schema of the object and json arrays can be found in the REST
-     *      API documentation for the specific endpoint.
+     *      See parseApiResponse() method. The content and schema of the data
+     *      array can be found in the API documentation for the endpoint.
      */
-    public function get(string $uri, array $request_data = []): object
-    {
-        $request = Http::withToken($this->access_token)
-            ->withHeaders($this->request_headers)
-            ->get($this->base_url . $uri, $request_data);
+    public static function get(
+        string $uri,
+        array $data = [],
+        array $connection = [],
+        int $per_page = 100
+    ): object {
+        $connection = self::validateConnection($connection);
+        $event_ms = now();
 
-        $response = $this->parseApiResponse($request);
+        try {
+            $request = Http::withHeaders(self::getRequestHeaders($connection))->get(
+                url: implode('/', [
+                    rtrim($connection['url'], '/'),
+                    'api/v' . config('gitlab-api-client.version'),
+                    ltrim($uri, '/')
+                ]),
+                query: array_merge(['per_page' => $per_page], $data)
+            );
+        } catch (RequestException $exception) {
+            return self::handleException(
+                exception: $exception,
+                method: __METHOD__,
+                uri: ltrim($uri, '/')
+            );
+        }
 
-        $query_string = !empty($request_data) ? '?' . http_build_query($request_data) : '';
-        $this->logResponse('get', $this->base_url . $uri . $query_string, $response);
-        $this->throwExceptionIfEnabled('get', $this->base_url . $uri . $query_string, $response);
+        $response = self::parseApiResponse($request);
+        $query_string = $data ? '?' . http_build_query($data) : '';
+        self::logResponse(
+            event_ms: $event_ms,
+            method: __METHOD__,
+            url: implode('/', [
+                rtrim($connection['url'], '/'),
+                'api/v' . config('gitlab-api-client.version'),
+                ltrim($uri, '/') . $query_string
+            ]),
+            request_data: $data,
+            response: $response
+        );
+        self::throwExceptionIfEnabled(
+            method: 'get',
+            url: implode('/', [
+                rtrim($connection['url'], '/'),
+                'api/v' . config('gitlab-api-client.version'),
+                ltrim($uri, '/') . $query_string
+            ]),
+            response: $response
+        );
 
-        if ($this->checkForPagination($response->headers) == true) {
-            $request->paginated_results = $this->getPaginatedResults($this->base_url . $uri, $request_data);
+        if (self::checkForPagination($response->headers) == true) {
+            Log::create(
+                event_type: 'gitlab.api.get.process.pagination.started',
+                level: 'debug',
+                message: 'Paginated Results Process Started',
+                metadata: [
+                    'uri' => ltrim($uri, '/'),
+                ],
+                method: __METHOD__,
+                transaction: false
+            );
 
-            // Override single page response with paginated results
-            $response = $this->parseApiResponse($request);
+            $response->paginated_results = self::getPaginatedResults(
+                connection: $connection,
+                paginated_url: self::generateNextPaginatedResultUrl(
+                    headers: $response->headers,
+                ),
+                data: $response->data
+            );
+
+            // Parse API Response and convert to returnable object with expected format
+            $response = self::parseApiResponse($response);
+
+            $count_records = is_countable($response->data) ? count($response->data) : null;
+            $duration_ms_per_record = $count_records ? (int) ($event_ms->diffInMilliseconds() / $count_records) : null;
+
+            Log::create(
+                count_records: $count_records,
+                duration_ms: $event_ms,
+                duration_ms_per_record: $duration_ms_per_record,
+                event_type: 'gitlab.api.get.process.pagination.finished',
+                level: 'debug',
+                message: 'Paginated Results Process Complete',
+                metadata: [
+                    'uri' => ltrim($uri, '/'),
+                ],
+                method: __METHOD__,
+                transaction: false
+            );
         }
 
         return $response;
@@ -353,27 +226,78 @@ class ApiClient
      *
      * Example Usage:
      * ```php
-     * $gitlab_api = new \GitlabIt\Gitlab\ApiClient('gitlab_com');
-     * return $gitlab_api->post('/projects', [
-     *      'name' => 'My Cool Project',
-     *      'path' => 'my-cool-project'
-     * ]);
+     * use Provisionesta\Gitlab\ApiClient;
+     *
+     * $response = ApiClient::post(
+     *     uri: 'projects',
+     *     data: [
+     *         'name' => 'My Cool Project',
+     *         'path' => 'my-cool-project'
+     *     ]
+     * );
      * ```
      *
-     * @param string $uri The URI with leading slash after `/api/v4`
+     * @param string $uri
+     *      The URI with or without leading slash after `/api/v4/`
      *
-     * @param array $request_data Optional Post Body array
+     * @param array $data (optional)
+     *      Post Body array
+     *
+     * @param array $connection (optional)
+     *      An array with `url` and `token`.
+     *      If not set, the `config('gitlab-api-client')` array will be used that
+     *      uses the GITLAB_API_* variables from your .env file.
+     *
+     * @return object
+     *      See parseApiResponse() method. The content and schema of the data
+     *      array can be found in the API documentation for the endpoint.
      */
-    public function post(string $uri, array $request_data = []): object
-    {
-        $request = Http::withToken($this->access_token)
-            ->withHeaders($this->request_headers)
-            ->post($this->base_url . $uri, $request_data);
+    public static function post(
+        string $uri,
+        array $data = [],
+        array $connection = []
+    ): object {
+        $connection = self::validateConnection($connection);
+        $event_ms = now();
 
-        $response = $this->parseApiResponse($request);
+        try {
+            $request = Http::withHeaders(self::getRequestHeaders($connection))->post(
+                url: implode('/', [
+                    rtrim($connection['url'], '/'),
+                    'api/v' . config('gitlab-api-client.version'),
+                    ltrim($uri, '/')
+                ]),
+                data: $data
+            );
+        } catch (RequestException $exception) {
+            return self::handleException(
+                exception: $exception,
+                method: __METHOD__,
+                uri: ltrim($uri, '/')
+            );
+        }
 
-        $this->logResponse('post', $this->base_url . $uri, $response);
-        $this->throwExceptionIfEnabled('post', $this->base_url . $uri, $response);
+        $response = self::parseApiResponse($request);
+        self::logResponse(
+            event_ms: $event_ms,
+            method: __METHOD__,
+            url: implode('/', [
+                rtrim($connection['url'], '/'),
+                'api/v' . config('gitlab-api-client.version'),
+                ltrim($uri, '/')
+            ]),
+            request_data: $data,
+            response: $response
+        );
+        self::throwExceptionIfEnabled(
+            method: 'post',
+            url: implode('/', [
+                rtrim($connection['url'], '/'),
+                'api/v' . config('gitlab-api-client.version'),
+                ltrim($uri, '/')
+            ]),
+            response: $response
+        );
 
         return $response;
     }
@@ -386,26 +310,66 @@ class ApiClient
      *
      * Example Usage:
      * ```php
-     * $gitlab_api = new \GitlabIt\Gitlab\ApiClient('gitlab_com');
-     * return $gitlab_api->put('/projects/12345678', [
-     *      'description' => 'This is an updated project description'
-     * ]);
+     * use Provisionesta\Gitlab\ApiClient;
+     *
+     * $project_id = '12345678';
+     * $response = ApiClient::put(
+     *     uri: 'projects/' . $project_id,
+     *     data: [
+     *         'description' => 'This is an updated project description'
+     *     ]
+     * );
      * ```
      *
-     * @param string $uri The URI with leading slash after `/api/v4`
+     * @param string $uri
+     *      The URI with or without leading slash after `/api/v4/`
      *
-     * @param array $request_data Optional request data to send with PUT request
+     * @param array $data (optional)
+     *      Request data to send with PUT request
+     *
+     * @param array $connection (optional)
+     *      An array with `url` and `token`.
+     *      If not set, the `config('gitlab-api-client')` array will be used that
+     *      uses the GITLAB_API_* variables from your .env file.
+     *
+     * @return object
+     *      See parseApiResponse() method. The content and schema of the data
+     *      array can be found in the API documentation for the endpoint.
      */
-    public function put(string $uri, array $request_data = []): object
-    {
-        $request = Http::withToken($this->access_token)
-            ->withHeaders($this->request_headers)
-            ->put($this->base_url . $uri, $request_data);
+    public static function put(
+        string $uri,
+        array $data = [],
+        array $connection = []
+    ): object {
+        $connection = self::validateConnection($connection);
+        $event_ms = now();
 
-        $response = $this->parseApiResponse($request);
+        try {
+            $request = Http::withHeaders(self::getRequestHeaders($connection))->put(
+                url: $connection['url'] . '/api/v' . config('gitlab-api-client.version') . '/' . $uri,
+                data: $data
+            );
+        } catch (RequestException $exception) {
+            return self::handleException(
+                exception: $exception,
+                method: __METHOD__,
+                uri: ltrim($uri, '/')
+            );
+        }
 
-        $this->logResponse('put', $this->base_url . $uri, $response);
-        $this->throwExceptionIfEnabled('put', $this->base_url . $uri, $response);
+        $response = self::parseApiResponse($request);
+        self::logResponse(
+            event_ms: $event_ms,
+            method: __METHOD__,
+            url: $connection['url'] . '/api/v' . config('gitlab-api-client.version') . '/' . ltrim($uri, '/'),
+            request_data: $data,
+            response: $response
+        );
+        self::throwExceptionIfEnabled(
+            method: 'put',
+            url: $connection['url'] . '/api/v' . config('gitlab-api-client.version') . '/' . ltrim($uri, '/'),
+            response: $response
+        );
 
         return $response;
     }
@@ -417,26 +381,118 @@ class ApiClient
      *
      * Example Usage:
      * ```php
-     * $gitlab_api = new \GitlabIt\Gitlab\ApiClient('gitlab_com');
-     * return $gitlab_api->delete('/user/'.$id);
+     * use Provisionesta\Gitlab\ApiClient;
+     *
+     * $user_id = '12345678';
+     * $response = ApiClient::delete('users/' . $user_id);
      * ```
      *
-     * @param string $uri The URI with leading slash after `/api/v4`
+     * @param string $uri
+     *      The URI with or without leading slash after `/api/v4/`
      *
-     * @param array $request_data Optional request data to send with DELETE request
+     * @param array $data (optional)
+     *      Request data to send with DELETE request
+     *
+     * @param array $connection (optional)
+     *      An array with `url` and `token`.
+     *      If not set, the `config('gitlab-api-client')` array will be used that
+     *      uses the GITLAB_API_* variables from your .env file.
+     *
+     * @return object
+     *      See parseApiResponse() method. The content and schema of the object
+     *      and json arrays can be found in the REST API documentation for the
+     *      specific endpoint.
      */
-    public function delete(string $uri, array $request_data = []): object
+    public static function delete(string $uri, array $data = [], array $connection = []): object
     {
-        $request = Http::withToken($this->access_token)
-            ->withHeaders($this->request_headers)
-            ->delete($this->base_url . $uri, $request_data);
+        $connection = self::validateConnection($connection);
+        $event_ms = now();
 
-        $response = $this->parseApiResponse($request);
+        try {
+            $request = Http::withHeaders(self::getRequestHeaders($connection))->delete(
+                url: $connection['url'] . '/api/v' . config('gitlab-api-client.version') . '/' . ltrim($uri, '/'),
+                data: $data
+            );
+        } catch (RequestException $exception) {
+            return self::handleException(
+                exception: $exception,
+                method: __METHOD__,
+                uri: ltrim($uri, '/')
+            );
+        }
 
-        $this->logResponse('delete', $this->base_url . $uri, $response);
-        $this->throwExceptionIfEnabled('delete', $this->base_url . $uri, $response);
+        $response = self::parseApiResponse($request);
+        self::logResponse(
+            event_ms: $event_ms,
+            method: __METHOD__,
+            url: $connection['url'] . '/api/v' . config('gitlab-api-client.version') . '/' . ltrim($uri, '/'),
+            response: $response
+        );
+        self::throwExceptionIfEnabled(
+            method: 'delete',
+            url: $connection['url'] . '/api/v' . config('gitlab-api-client.version') . '/' . ltrim($uri, '/'),
+            response: $response
+        );
 
         return $response;
+    }
+
+    /**
+     * Validate connection config array
+     *
+     * @param array $connection
+     *      An array with `url` and `token`.
+     */
+    private static function validateConnection(array $connection): array
+    {
+        if (empty($connection)) {
+            $connection = config('gitlab-api-client');
+        }
+
+        $validator = Validator::make($connection, [
+            'url' => 'required|url:https',
+            'token' => 'required|alpha_dash',
+        ]);
+
+        if ($validator->fails()) {
+            Log::create(
+                errors: $validator->errors()->all(),
+                event_type: 'gitlab.api.validate.error',
+                level: 'critical',
+                message: 'Error',
+                method: __METHOD__,
+                transaction: true
+            );
+            throw new ConfigurationException(implode(' ', [
+                'Gitlab API configuration validation error.',
+                'This occurred in ' . __METHOD__ . '.',
+                '(Solution) ' . implode(' ', $validator->errors()->all())
+            ]));
+        }
+
+        return $validator->validated();
+    }
+
+    /**
+     * Set the request headers for the GitLab API request
+     *
+     * @param array $connection
+     *      An array with `url` and `token`.
+     */
+    private static function getRequestHeaders(array $connection): array
+    {
+        $composer_array = json_decode((string) file_get_contents(base_path('composer.json')), true);
+        $package_name = Str::title($composer_array['name']);
+
+        return [
+            'Authorization' => 'Bearer ' . $connection['token'],
+            'User-Agent' => implode(' ', [
+                $package_name,
+                'provisionesta/gitlab-api-client',
+                'Laravel/' . app()->version(),
+                'PHP/' . phpversion()
+            ])
+        ];
     }
 
     /**
@@ -503,16 +559,20 @@ class ApiClient
      *      "CF-RAY" => "6a7ebcad3ce908db-SEA",
      *  }
      */
-    protected function convertHeadersToArray(array $header_response): array
+    private static function convertHeadersToArray(array $header_response): array
     {
         $headers = [];
 
         foreach ($header_response as $header_key => $header_value) {
-            // If array has multiple keys, leave as array
-            if (count($header_value) > 1) {
-                $headers[$header_key] = $header_value;
+            if (is_array($header_value)) {
+                // If array has multiple keys, leave as array
+                if (count($header_value) > 1) {
+                    $headers[$header_key] = $header_value;
+                } else {
+                    $headers[$header_key] = $header_value[0];
+                }
             } else {
-                $headers[$header_key] = $header_value[0];
+                $headers[$header_key] = $header_value;
             }
         }
 
@@ -531,9 +591,15 @@ class ApiClient
      *      True if the response requires multiple pages
      *      False if response is a single page
      */
-    protected function checkForPagination(array $headers): bool
+    private static function checkForPagination(array $headers): bool
     {
-        return (array_key_exists('X-Next-Page', $headers));
+        if (array_key_exists('x-next-page', $headers) && $headers['x-next-page'] != '') {
+            return true;
+        } elseif (array_key_exists('X-Next-Page', $headers) && $headers['X-Next-Page'] != '') {
+            return true;
+        } else {
+            return false;
+        }
     }
 
     /**
@@ -545,21 +611,27 @@ class ApiClient
      *      API response headers from GitLab request or parsed response.
      *
      * @return ?string
-     *      https://gitlab.example.com/api/v4/projects/8/issues/8/notes?page=3&per_page=3
+     *      https://gitlab.com/api/v4/projects/123456/issues/236/notes?page=3&per_page=100
      */
-    protected function generateNextPaginatedResultUrl(array $headers): ?string
-    {
+    private static function generateNextPaginatedResultUrl(
+        array $headers,
+    ): ?string {
+        $links = [];
         if (array_key_exists('Link', $headers)) {
             $links = explode(', ', $headers['Link']);
-            foreach ($links as $link_key => $link_url) {
-                if (Str::contains($link_url, 'next')) {
-                    // Remove the '<' and '>; rel="next"' that is around the next api_url
-                    // Before: <https://gitlab.com/api/v4/projects/8/issues/8/notes?page=3&per_page=3>; rel="next"
-                    // After: https://gitlab.com/api/v4/projects/8/issues/8/notes?page=3&per_page=3
-                    $url = Str::remove('<', $links[$link_key]);
-                    $url = Str::remove('>; rel="next"', $url);
-                    return $url;
-                }
+        } elseif (array_key_exists('link', $headers)) {
+            $links = explode(', ', $headers['link']);
+        }
+
+        foreach ($links as $link_key => $link_url) {
+            if (Str::contains($link_url, 'next')) {
+                // Remove the '<' and '>; rel="next"' that is around the next api_url
+                // Before: <https://gitlab.com/api/v4/projects/123456/issues/236/notes?page=3&per_page=100>; rel="next"
+                // After: https://gitlab.com/api/v4/projects/123456/issues/236/notes?page=3&per_page=100
+                $url_query = Str::remove('<', $links[$link_key]);
+                $url_query = Str::remove('>; rel="next"', $url_query);
+
+                return $url_query;
             }
         }
 
@@ -569,92 +641,77 @@ class ApiClient
     /**
      * Helper function used to get GitLab API results that require pagination.
      *
-     * @see https://docs.gitlab.com/ee/api/rest/index.html#pagination
+     * @link https://docs.gitlab.com/ee/api/rest/#pagination
      *
-     * Example Usage:
-     * ```php
-     * $this->getPaginatedResults('/users');
-     * ```
+     * @param array $connection
+     *      An array with `url` and `token`.
      *
      * @param string $paginated_url
-     *      The concatenated Base URL and Endpoint. This variable will be overriden in the do/while loop.
+     *      The paginated URL generated in the get() method
      *
-     * @param array $request_data
-     *      Optional query data to apply to GET request
+     * @param array $data
+     *      An array of records from the first page to append to paginated results
      *
-     * @return object
-     *      An array of the response objects for each page combined casted as an object.
+     * @return array
+     *      An array of the response objects for each page combined.
      */
-    protected function getPaginatedResults(string $paginated_url, array $request_data = []): object
-    {
-        // Define empty array for adding API results to
-        $records = [];
-
-        // Set per_page from default 20 to max 100 defined in class constant.
-        // This can be overriden by passing it into the request_data array for a specific GET API call.
-        if (!array_key_exists('per_page', $request_data)) {
-            $request_data['per_page'] = self::PER_PAGE;
-        }
-
+    private static function getPaginatedResults(
+        array $connection,
+        string $paginated_url,
+        array $data = []
+    ): array {
         do {
-            // Get the results from the API. This ensures that the request data doesn't overwrite the pagination cursor.
-            if ($request_data != []) {
-                $request = Http::withToken($this->access_token)
-                    ->withHeaders($this->request_headers)
-                    ->get($paginated_url, $request_data);
-            } else {
-                $request = Http::withToken($this->access_token)
-                    ->withHeaders($this->request_headers)
-                    ->get($paginated_url);
-            }
+            $event_ms = now();
 
-            $response = $this->parseApiResponse($request);
+            $request = Http::withHeaders(self::getRequestHeaders($connection))->get(
+                url: $paginated_url
+            );
 
-            $this->logResponse('get', $paginated_url, $response);
-            $this->throwExceptionIfEnabled('get', $paginated_url, $response);
+            $response = self::parseApiResponse($request);
+            self::logResponse(
+                event_ms: $event_ms,
+                method: __METHOD__,
+                url: $paginated_url,
+                response: $response
+            );
+            self::throwExceptionIfEnabled(
+                method: 'get|paginated',
+                url: $paginated_url,
+                response: $response
+            );
 
-            // Loop through each object from the response and add it to the $records array
-            foreach ($response->object as $api_record) {
-                $records[] = $api_record;
-            }
+            $data[] = $response->data;
 
-            // Get next page of results by parsing link and updating URL
-            if ($this->checkForPagination($response->headers)) {
-                $paginated_url = $this->generateNextPaginatedResultUrl($response->headers);
+            if (self::checkForPagination($response->headers)) {
+                $paginated_url = self::generateNextPaginatedResultUrl($response->headers);
             } else {
                 $paginated_url = null;
             }
-
-            // Set request data to null after first iteration since it is now embedded in the response header URL
-            $request_data = [];
         } while ($paginated_url != null);
 
-        return (object) $records;
+        return collect($data)->flatten(1)->toArray();
     }
 
     /**
      * Parse the API response and return custom formatted response for consistency
      *
-     * @see https://laravel.com/docs/8.x/http-client#making-requests
+     * @link https://laravel.com/docs/10.x/http-client#making-requests
      *
      * @param object $response Response object from API results
      *
-     * @param false $paginated If the response is paginated or not
-     *
      * @return object Custom response returned for consistency
      *  {
+     *    +"data": {
+     *      +"id": 12345678
+     *      +"name": "Dade Murphy"
+     *      +"username": "z3r0c00l"
+     *      +"state": "active"
+     *    }
      *    +"headers": {
      *      +"Date": "Fri, 12 Nov 2021 20:13:55 GMT"
      *      +"Content-Type": "application/json"
      *      +"Content-Length": "1623"
      *      +"Connection": "keep-alive"
-     *    }
-     *    +"json": "{"id":12345678,"name":"Dade Murphy","username":"z3r0c00l","state":"active"}"
-     *    +"object": {
-     *      +"id": 12345678
-     *      +"name": "Dade Murphy"
-     *      +"username": "z3r0c00l"
-     *      +"state": "active"
      *    }
      *    +"status": {
      *      +"code": 200
@@ -666,27 +723,94 @@ class ApiClient
      *   }
      * }
      */
-    protected function parseApiResponse(object $response): object
+    private static function parseApiResponse(object $response): object
     {
         if (property_exists($response, 'paginated_results')) {
-            $json_output = json_encode($response->paginated_results);
-            $object_output = (object) $response->paginated_results;
+            return (object) [
+                'data' => (object) $response->paginated_results,
+                'headers' => self::convertHeadersToArray($response->headers),
+                'status' => $response->status,
+            ];
         } else {
-            $json_output = json_encode($response->json());
-            $object_output = $response->object();
+            return (object) [
+                'data' => $response->object(),
+                'headers' => self::convertHeadersToArray($response->headers()),
+                'status' => (object) [
+                    'code' => $response->status(),
+                    'ok' => $response->ok(),
+                    'successful' => $response->successful(),
+                    'failed' => $response->failed(),
+                    'serverError' => $response->serverError(),
+                    'clientError' => $response->clientError(),
+                ],
+            ];
         }
+    }
+
+    /**
+     * Handle GitLab API Exception
+     *
+     * @param \Illuminate\Http\Client\RequestException $exception An instance of the exception
+     *
+     * @param string $method
+     *      The upstream method that invoked this method for traceability
+     *      Ex. __METHOD__
+     *
+     * @param string $uri
+     *      HTTP Request URI
+     *
+     * @return object
+     *  {
+     *    +"error": {
+     *      +"code": "<string>"
+     *      +"message": "<string>"
+     *      +"method": "<string>"
+     *      +"uri": "<string>"
+     *    }
+     *    +"status": {
+     *      +"code": 400
+     *      +"ok": false
+     *      +"successful": false
+     *      +"failed": true
+     *      +"serverError": false
+     *      +"clientError": true
+     *   }
+     */
+    private static function handleException(
+        RequestException $exception,
+        $method,
+        $uri
+    ): object {
+        Log::create(
+            errors: [
+                'code' => $exception->getCode(),
+                'message' => $exception->getMessage(),
+                'trace' => $exception->getTrace()
+            ],
+            event_type: 'gitlab.api.' . explode('::', $method)[1] . '.error.http.exception',
+            level: 'error',
+            message: 'HTTP Response Exception',
+            metadata: [
+                'uri' => ltrim($uri, '/')
+            ],
+            method: $method,
+            transaction: true
+        );
 
         return (object) [
-            'headers' => $this->convertHeadersToArray($response->headers()),
-            'json' => $json_output,
-            'object' => $object_output,
+            'error' => (object) [
+                'code' => $exception->getCode(),
+                'message' => $exception->getMessage(),
+                'method' => $method,
+                'uri' => ltrim($uri, '/')
+            ],
             'status' => (object) [
-                'code' => $response->status(),
-                'ok' => $response->ok(),
-                'successful' => $response->successful(),
-                'failed' => $response->failed(),
-                'serverError' => $response->serverError(),
-                'clientError' => $response->clientError(),
+                'code' => $exception->getCode(),
+                'ok' => false,
+                'successful' => false,
+                'failed' => true,
+                'serverError' => true,
+                'clientError' => false,
             ],
         ];
     }
@@ -697,117 +821,112 @@ class ApiClient
      * This method is called from other methods and create log entry and throw exception
      *
      * @param string $method
-     *      The lowercase name of the method that calls this function (ex. `get`)
+     *      The upstream method that invoked this method for traceability
+     *      Ex. __METHOD__
      *
      * @param string $url
      *      The URL of the API call including the concatenated base URL and URI
      *
      * @param object $response
-     *      The HTTP response formatted with $this->parseApiResponse()
+     *      The raw unformatted HTTP client response
+     *
+     * @param Carbon $event_ms
+     *      A process start timestamp used to calculate duration in ms for logs
      */
-    protected function logResponse(string $method, string $url, object $response): void
-    {
-        $message = Str::upper($method) . ' ' . $response->status->code . ' ' . $url;
-
-        $log_context = [
-            'api_endpoint' => $url,
-            'api_method' => Str::upper($method),
-            'class' => get_class(),
-            'connection_key' => $this->connection_key,
-            'event_type' => null,
-            'gitlab_version' => $this->gitlab_version,
-            'status_code' => $response->status->code,
+    private static function logResponse(
+        string $method,
+        string $url,
+        object $response,
+        array $request_data = [],
+        Carbon $event_ms = null
+    ): void {
+        $log_type = [
+            200 => ['event_type' => 'success', 'level' => 'debug'],
+            201 => ['event_type' => 'success', 'level' => 'debug'],
+            202 => ['event_type' => 'success', 'level' => 'debug'],
+            204 => ['event_type' => 'success', 'level' => 'debug'],
+            400 => ['event_type' => 'warning.bad-request', 'level' => 'warning'],
+            401 => ['event_type' => 'error.unauthorized', 'level' => 'error'],
+            403 => ['event_type' => 'error.forbidden', 'level' => 'error'],
+            404 => ['event_type' => 'warning.not-found', 'level' => 'warning'],
+            405 => ['event_type' => 'error.method-not-allowed', 'level' => 'error'],
+            412 => ['event_type' => 'error.precondition-failed', 'level' => 'error'],
+            422 => ['event_type' => 'error.unprocessable', 'level' => 'error'],
+            429 => ['event_type' => 'critical.rate-limit', 'level' => 'critical'],
+            500 => ['event_type' => 'critical.server-error', 'level' => 'critical'],
+            501 => ['event_type' => 'error.not-implemented', 'level' => 'error'],
+            503 => ['event_type' => 'critical.server-unavailable', 'level' => 'critical'],
         ];
 
-        $log_context['event_type'] = match ($response->status->code) {
-            200 => 'gitlab-api-response-info',
-            201 => 'gitlab-api-response-created',
-            202 => 'gitlab-api-response-accepted',
-            204 => 'gitlab-api-response-deleted',
-            400 => 'gitlab-api-response-error-bad-request',
-            401 => 'gitlab-api-response-error-unauthorized',
-            403 => 'gitlab-api-response-error-forbidden',
-            404 => 'gitlab-api-response-error-not-found',
-            405 => 'gitlab-api-response-error-method-not-allowed',
-            412 => 'gitlab-api-response-error-precondition-failed',
-            422 => 'gitlab-api-response-error-unprocessable',
-            429 => 'gitlab-api-response-error-rate-limit',
-            500 => 'gitlab-api-response-error-server'
-        };
-
-        // dd($response->object);
-        if (is_object($response->object) && property_exists($response->object, 'error')) {
-            $log_context['reason'] = $response->object->error;
-        } elseif (!$response->status->successful && isset($response->object->message)) {
-            $log_context['reason'] = $response->json;
-        } elseif (!$response->status->successful) {
-            $log_context['reason'] = null;
+        $errors = [];
+        if (isset($response->data->message)) {
+            $errors['message'] = $response->data->message;
         }
 
-        switch ($response->status->code) {
-            case 200:
-                Log::stack((array) $this->connection_config['log_channels'])->info($message, $log_context);
-                break;
-            case 201:
-                Log::stack((array) $this->connection_config['log_channels'])->info($message, $log_context);
-                break;
-            case 202:
-                Log::stack((array) $this->connection_config['log_channels'])->info($message, $log_context);
-                break;
-            case 204:
-                Log::stack((array) $this->connection_config['log_channels'])->info($message, $log_context);
-                break;
-            case 400:
-                Log::stack((array) $this->connection_config['log_channels'])->warning($message, $log_context);
-                break;
-            case 401:
-                $message = 'The `GITLAB_' . Str::upper($this->connection_key) . '_ACCESS_TOKEN` has been ' .
-                    'configured but is invalid (does not exist or has expired). Please generate a new Access Token ' .
-                    'and update the variable in your `.env` file.';
-                Log::stack((array) $this->connection_config['log_channels'])->error($message, $log_context);
-                break;
-            case 403:
-                Log::stack((array) $this->connection_config['log_channels'])->error($message, $log_context);
-                break;
-            case 404:
-                Log::stack((array) $this->connection_config['log_channels'])->warning($message, $log_context);
-                break;
-            case 412:
-                Log::stack((array) $this->connection_config['log_channels'])->error($message, $log_context);
-                break;
-            case 422:
-                Log::stack((array) $this->connection_config['log_channels'])->error($message, $log_context);
-                break;
-            case 429:
-                $log_context['rate_limit_limit'] = $response->headers['RateLimit-Limit'] ?? null;
-                $log_context['rate_limit_observed'] = $response->headers['RateLimit-Observed'] ?? null;
-                $log_context['rate_limit_remaining'] = $response->headers['RateLimit-Remaining'] ?? null;
-                $log_context['rate_limit_reset_timestamp'] = $response->headers['RateLimit-Reset'] ?? null;
-                $log_context['rate_limit_reset_datetime'] = $response->headers['RateLimit-ResetTime'] ?? null;
+        $message = 'Success';
+        if ($response->status->clientError) {
+            $message = 'Client Error';
+        }
+        if ($response->status->serverError) {
+            $message = 'Server Error';
+        }
 
-                if (isset($response->headers['RateLimit-Reset'])) {
-                    $time_remaining = Carbon::parse($response->headers['RateLimit-Reset'])->diffInSeconds();
-                    $log_context['rate_limit_reset_secs_remaining'] = $time_remaining;
-                    $message = 'Rate Limit Exceeded. Please try again in ' . $time_remaining . ' seconds';
-                } else {
-                    $log_context['rate_limit_reset_secs_remaining'] = null;
-                }
+        $count_records = null;
+        if ($response->status->ok && is_countable($response->data)) {
+            $count_records = count($response->data);
+        }
 
-                Log::stack((array) $this->connection_config['log_channels'])->warning($message, $log_context);
-                break;
-            case 500:
-                Log::stack((array) $this->connection_config['log_channels'])->error($message, $log_context);
-                break;
-            default:
-                Log::stack((array) $this->connection_config['log_channels'])->error($message, $log_context);
-                break;
+        $event_ms_per_record = null;
+        if ($event_ms && $count_records && $count_records > 1) {
+            $event_ms_per_record = (int) ($event_ms->diffInMilliseconds() / $count_records);
+        }
+
+        $metadata = [];
+        $metadata['url'] = $url;
+
+        $rate_limit_remaining = null;
+        if (isset($response->headers['RateLimit-Remaining'])) {
+            $rate_limit_remaining = $response->headers['RateLimit-Remaining'];
+            $metadata['rate_limit_remaining'] = $rate_limit_remaining;
+        } elseif (isset($response->headers['ratelimit-remaining'])) {
+            $rate_limit_remaining = $response->headers['ratelimit-remaining'];
+            $metadata['rate_limit_remaining'] = $rate_limit_remaining;
+        }
+
+        if (!empty($request_data)) {
+            unset($request_data['key']);
+            unset($request_data['password']);
+            $metadata['request_data'] = $request_data;
+        }
+
+        Log::create(
+            count_records: $count_records,
+            errors: $errors,
+            event_ms: $event_ms,
+            event_ms_per_record: $event_ms_per_record,
+            event_type: implode('.', [
+                'gitlab',
+                'api',
+                explode('::', $method)[1],
+                $log_type[$response->status->code]['event_type']
+            ]),
+            level: $log_type[$response->status->code]['level'],
+            message: $message,
+            metadata: $metadata,
+            method: $method,
+            transaction: false
+        );
+
+        if ($rate_limit_remaining) {
+            self::checkIfRateLimitApproaching($method, $url, $response);
+            self::checkIfRateLimitExceeded($method, $url, $response);
         }
     }
 
     /**
      * Throw an exception for a 4xx or 5xx response for an API call
      *
-     * This method checks whether the .env variable or config value for `GITLAB_{CONNECTION_KEY}_EXCEPTIONS=true`
+     * This method checks whether the .env variable or config value for `GITLAB_API_EXCEPTIONS=true`
      *
      * @param string $method
      *      The lowercase name of the method that calls this function (ex. `get`)
@@ -817,29 +936,49 @@ class ApiClient
      *
      * @param object $response
      *      The HTTP response formatted with $this->parseApiResponse()
+     *
+     * @throws BadRequestException
+     * @throws ConflictException
+     * @throws ForbiddenException
+     * @throws MethodNotAllowedException
+     * @throws NotFoundException
+     * @throws PreconditionFailedException
+     * @throws RateLimitException
+     * @throws ServerErrorException
+     * @throws UnauthorizedException
+     * @throws UnprocessableException
      */
-    protected function throwExceptionIfEnabled(string $method, string $url, object $response): void
-    {
-        if (config('gitlab-sdk.connections.' . $this->connection_key . '.exceptions') == true) {
-            $message = Str::upper($method) . ' ' . $response->status->code . ' ' . $url;
-
-            // If API error includes a message, append friendly message to existing request string
-            if (property_exists($response->object, 'message')) {
-                $message .= ' - ' . $response->object->message;
-            }
+    private static function throwExceptionIfEnabled(
+        string $method,
+        string $url,
+        object $response
+    ): void {
+        if (config('gitlab-api-client.exceptions') == true) {
+            $message = implode(' ', [
+                Str::upper($method),
+                $response->status->code,
+                $url,
+                isset($response->data->message) ? $response->data->message : null,
+            ]);
 
             switch ($response->status->code) {
                 case 400:
-                    throw new BadRequestException($response->json);
+                    throw new BadRequestException($message);
                 case 401:
-                    $message = 'The `GITLAB_' . Str::upper($this->connection_key) . '_ACCESS_TOKEN` has been ' .
-                        'configured but is invalid (does not exist or has expired). Please generate a new Access ' .
-                        'Token and update the variable in your `.env` file.';
+                    $message = implode(' ', [
+                        'The `GITLAB_API_TOKEN` has been configured but is invalid.',
+                        '(Reason) This usually happens if it does not exist, expired, or does not have permissions.',
+                        '(Solution) Please generate a new API Token and update the variable in your `.env` file.'
+                    ]);
                     throw new UnauthorizedException($message);
                 case 403:
                     throw new ForbiddenException($message);
                 case 404:
                     throw new NotFoundException($message);
+                case 405:
+                    throw new MethodNotAllowedException($message);
+                case 409:
+                    throw new ConflictException($message);
                 case 412:
                     throw new PreconditionFailedException($message);
                 case 422:
@@ -847,8 +986,123 @@ class ApiClient
                 case 429:
                     throw new RateLimitException($message);
                 case 500:
-                    throw new ServerErrorException($response->json);
+                    throw new ServerErrorException(json_encode($response->data));
+                case 503:
+                    throw new ServiceUnavailableException();
             }
+        }
+    }
+
+    /**
+     * Create a warning log entry for an API call if the rate limit remaining is less than 10 percent
+     *
+     * @param string $method
+     *      The lowercase name of the method that calls this function (ex. `get`)
+     *
+     * @param string $url
+     *      The URL of the API call including the concatenated base URL and URI
+     *
+     * @param object $response
+     *      The HTTP response formatted with $this->parseApiResponse()
+     *
+     * @return void
+     */
+    private static function checkIfRateLimitApproaching(
+        string $method,
+        string $url,
+        object $response
+    ): void {
+        $rate_limit_remaining = null;
+        $percent_remaining = null;
+        if (isset($response->headers['RateLimit-Remaining'])) {
+            $rate_limit_remaining = (int) $response->headers['RateLimit-Remaining'];
+            $rate_limit = (int) $response->headers['RateLimit-Limit'];
+            $percent_remaining = round(($rate_limit_remaining / $rate_limit) * 100);
+        } elseif (isset($response->headers['ratelimit-remaining'])) {
+            $rate_limit_remaining = (int) $response->headers['ratelimit-remaining'];
+            $rate_limit = (int) $response->headers['ratelimit-limit'];
+            $percent_remaining = round(($rate_limit_remaining / $rate_limit) * 100);
+        }
+
+        if ($rate_limit_remaining && $percent_remaining <= 20) {
+            Log::create(
+                event_type: 'gitlab.api.rate-limit.approaching',
+                level: 'critical',
+                message: implode(' ', [
+                    'Rate Limit Approaching (' . $percent_remaining . '% Remaining).',
+                    'Sleeping for 10 seconds between requests to let the API catch a breath.'
+                ]),
+                metadata: [
+                    'gitlab_rate_limit_limit' => $response->headers['RateLimit-Limit'] ?? null,
+                    'gitlab_rate_limit_percent' => $percent_remaining,
+                    'gitlab_rate_limit_remaining' => $response->headers['RateLimit-Remaining'] ?? null,
+                    'gitlab_rate_limit_used' => $response->headers['RateLimit-Observed'] ?? null,
+                    'url' => $url
+                ],
+                method: $method,
+                transaction: false
+            );
+
+            sleep(10);
+        }
+    }
+
+    /**
+     * Create an error log entry for an API call if the rate limit remaining is equal to zero (0) or one (1),
+     * indicating that this is the last request that will be successful.
+     *
+     * @param string $method
+     *      The upstream method that invoked this method for traceability
+     *      Ex. __METHOD__
+     *
+     * @param string $url
+     *      The URL of the API call including the concatenated base URL and URI
+     *
+     * @param object $response
+     *      The HTTP response formatted with $this->parseApiResponse()
+     *
+     * @return void
+     */
+    private static function checkIfRateLimitExceeded(
+        string $method,
+        string $url,
+        object $response
+    ): void {
+
+        $rate_limit_remaining = null;
+        $percent_remaining = null;
+        if (isset($response->headers['RateLimit-Remaining'])) {
+            $rate_limit_remaining = (int) $response->headers['RateLimit-Remaining'];
+            $rate_limit = (int) $response->headers['RateLimit-Limit'];
+            $percent_remaining = round(($rate_limit_remaining / $rate_limit) * 100);
+        } elseif (isset($response->headers['ratelimit-remaining'])) {
+            $rate_limit_remaining = (int) $response->headers['ratelimit-remaining'];
+            $rate_limit = (int) $response->headers['ratelimit-limit'];
+            $percent_remaining = round(($rate_limit_remaining / $rate_limit) * 100);
+        }
+
+        if ($rate_limit_remaining && $rate_limit_remaining <= 1) {
+            Log::create(
+                event_type: 'gitlab.api.rate-limit.exceeded',
+                level: 'critical',
+                message: implode(' ', [
+                    'Rate Limit Exceeded.',
+                    'This request should be refactored so we do not cause the API any further harm.'
+                ]),
+                metadata: [
+                    'gitlab_rate_limit_limit' => $response->headers['RateLimit-Limit'] ?? null,
+                    'gitlab_rate_limit_percent' => $percent_remaining,
+                    'gitlab_rate_limit_remaining' => $response->headers['RateLimit-Remaining'] ?? null,
+                    'gitlab_rate_limit_used' => $response->headers['RateLimit-Observed'] ?? null,
+                    'gitlab_rate_limit_reset_timestamp' => $response->headers['RateLimit-Reset'] ?? null,
+                    'gitlab_rate_limit_reset_datetime' => $response->headers['RateLimit-ResetTime'] ?? null,
+                    'url' => $url
+                ],
+                method: $method,
+                transaction: true
+            );
+
+            throw new RateLimitException('GitLab API rate limit exceeded. See logs for details.');
         }
     }
 }

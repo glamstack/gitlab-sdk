@@ -1,10 +1,10 @@
 <?php
 
-namespace GitlabIt\Gitlab;
+namespace Provisionesta\Gitlab;
 
 use Illuminate\Support\ServiceProvider;
 
-class GitlabServiceProvider extends ServiceProvider
+class GitlabApiServiceProvider extends ServiceProvider
 {
     // use ServiceBindings;
 
@@ -38,7 +38,7 @@ class GitlabServiceProvider extends ServiceProvider
      */
     protected function mergeConfig(): void
     {
-        $this->mergeConfigFrom(__DIR__ . '/Config/gitlab-sdk.php', 'gitlab-sdk');
+        $this->mergeConfigFrom(__DIR__ . '/Config/gitlab-api-client.php', 'gitlab-api-client');
     }
 
     /**
@@ -50,7 +50,12 @@ class GitlabServiceProvider extends ServiceProvider
     protected function publishConfigFile(): void
     {
         if ($this->app->runningInConsole()) {
-            $this->publishes([__DIR__ . '/Config/gitlab-sdk.php' => config_path('gitlab-sdk.php')], 'gitlab-sdk');
+            $this->publishes(
+                [
+                    __DIR__ . '/Config/gitlab-api-client.php' => config_path('gitlab-api-client.php')
+                ],
+                'gitlab-api-client'
+            );
         }
     }
 
@@ -64,8 +69,8 @@ class GitlabServiceProvider extends ServiceProvider
         if (property_exists($this, 'serviceBindings')) {
             foreach ($this->serviceBindings as $key => $value) {
                 is_numeric($key)
-                        ? $this->app->singleton($value)
-                        : $this->app->singleton($key, $value);
+                    ? $this->app->singleton($value)
+                    : $this->app->singleton($key, $value);
             }
         }
     }

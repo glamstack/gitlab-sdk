@@ -1,5 +1,5 @@
 # Define default image for CI jobs if not overridden
-image: registry.gitlab.com/gitlab-it/laravel-docker:8.1
+image: registry.gitlab.com/provisionesta/laravel-docker:8.2
 
 # Define cache variables and paths for all jobs
 cache:
@@ -32,7 +32,7 @@ include:
 # Code Syntax and Style Validation
 code_style:
   stage: test
-  image: registry.gitlab.com/gitlab-it/laravel-docker:8.1
+  image: registry.gitlab.com/provisionesta/laravel-docker:8.2
   allow_failure: true
   cache: {}
   script:
@@ -56,7 +56,7 @@ phpstan:
   extends: .laravel
   allow_failure: true
   script:
-    - php vendor/bin/phpstan analyse src/ --level=5 --xdebug
+    - php vendor/bin/phpstan analyse src/ --level=5 --memory-limit=2G
 
 # Unit Tests
 #unit_test:

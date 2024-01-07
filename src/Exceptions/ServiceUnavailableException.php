@@ -4,7 +4,7 @@ namespace Provisionesta\Gitlab\Exceptions;
 
 use Exception;
 
-class NotFoundException extends Exception
+class ServiceUnavailableException extends Exception
 {
     //
 }
