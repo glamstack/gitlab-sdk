@@ -65,6 +65,8 @@ class ApiClient
      *
      * Example Usage:
      * ```
+     * use Provisionesta\Gitlab\ApiClient;
+     *
      * $response = ApiClient::get(
      *     uri: 'projects/' . ApiClient::urlencode('group_name/child_group_name/project_name')
      * );
@@ -99,6 +101,7 @@ class ApiClient
      * Example Usage:
      * ```php
      * use Provisionesta\Gitlab\ApiClient;
+     *
      * $response = ApiClient::get(
      *     uri: 'users/' . $id
      * );
@@ -224,6 +227,7 @@ class ApiClient
      * Example Usage:
      * ```php
      * use Provisionesta\Gitlab\ApiClient;
+     *
      * $response = ApiClient::post(
      *     uri: 'projects',
      *     data: [
