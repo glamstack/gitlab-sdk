@@ -6,13 +6,9 @@ Please consider these to be guidelines. If in doubt, please create an issue and 
 
 ## Feature Requests and Ideas
 
-> **Disclaimer:** This is not an official package maintained by the GitLab product and development teams. This is an internal tool that we use in the GitLab IT department that we have open sourced as part of our company values.
->
-> Please use at your own risk and create merge requests for any bugs that you encounter.
+> **Disclaimer:** This is not an official package maintained by any company. Please use at your own risk and create merge requests for any bugs that you encounter.
 
-We do not maintain a roadmap of community feature requests, however we invite you to contribute and we will gladly review your merge requests.
-
-For GitLab team members, please create an issue in [gitlab-it/gitlab-sdk](https://gitlab.com/gitlab-it/gitlab-sdk/-/issues) (public) or [gitlab-com/it/dev/issue-tracker](https://gitlab.com/gitlab-com/it/dev/issue-tracker) (confidential).
+We do not maintain a roadmap of feature requests, however we invite you to contribute and we will gladly review your merge requests.
 
 ## Code Contributions
 
@@ -30,20 +26,33 @@ respective Laravel version.
 ```bash
 # Set temporary environment variable
 export SDK_LARAVEL_VERSION=10
-cd ~/Sites
+cd ~/Code
 # Create new Laravel projects
 composer create-project laravel/laravel:^${SDK_LARAVEL_VERSION}.0 laravel${SDK_LARAVEL_VERSION}-pkg-test
-# Create sylinks in directory
-mkdir -p laravel${SDK_LARAVEL_VERSION}-pkg-test/packages/gitlab-it
-ln -s ~/Sites/gitlab-sdk ~/Sites/laravel${SDK_LARAVEL_VERSION}-pkg-test/packages/gitlab-it/gitlab-sdk
+# Create symlinks in directory
+mkdir -p laravel${SDK_LARAVEL_VERSION}-pkg-test/packages/provisionesta
+ln -s ~/Code/gitlab-api-client ~/Code/laravel${SDK_LARAVEL_VERSION}-pkg-test/packages/provisionesta/gitlab-api-client
 # Custom repository location configuration
-cd ~/Sites/laravel${SDK_LARAVEL_VERSION}-pkg-test
-sed -i '.bak' -e 's/seeders\/"/&,\n            "GitlabIt\\\\Gitlab\\\\": "packages\/gitlab-it\/gitlab-sdk\/src"/g' composer.json
-composer config repositories.gitlab-sdk '{"type": "path", "url": "packages/gitlab-it/gitlab-sdk"}' --file composer.json
-composer require gitlab-it/gitlab-sdk:dev-main
-php artisan vendor:publish --tag=gitlab-sdk
+cd ~/Code/laravel${SDK_LARAVEL_VERSION}-pkg-test
+sed -i '.bak' -e 's/seeders\/"/&,\n            "Provisionesta\\\\Gitlab\\\\": "packages\/provisionesta\/gitlab-api-client\/src"/g' composer.json
+composer config repositories.gitlab-api-client '{"type": "path", "url": "packages/provisionesta/gitlab-api-client"}' --file composer.json
+composer require provisionesta/gitlab-api-client:dev-main
+php artisan vendor:publish --tag=gitlab-api-client
 # Unset temporary environment variable
 unset SDK_LARAVEL_VERSION
+```
+
+You can link this package into an existing Laravel application using the following commands.
+
+```bash
+ce ~/Code/my-project-name
+
+mkdir -p packages/provisionesta
+ln -s ~/Code/gitlab-api-client packages/provisionesta/gitlab-api-client
+sed -i '.bak' -e 's/seeders\/"/&,\n            "Provisionesta\\\\Gitlab\\\\": "packages\/provisionesta\/gitlab-api-client\/src"/g' composer.json
+composer config repositories.gitlab-api-client '{"type": "path", "url": "packages/provisionesta/gitlab-api-client"}' --file composer.json
+composer require provisionesta/gitlab-api-client:dev-main
+php artisan vendor:publish --tag=gitlab-api-client
 ```
 
 ## Custom Application Configuration
@@ -56,16 +65,16 @@ You can mitigate this problem by creating a local symlink (with resolved namespa
 
 ```bash
 # Pre-Requisite (you should already have this)
-# You can use any directory you want (if not using ~/Sites)
-cd ~/Sites
-git clone https://gitlab.com/gitlab-it/gitlab-sdk.git
+# You can use any directory you want (if not using ~/Code)
+cd ~/Code
+git clone https://gitlab.com/provisionesta/gitlab-api-client.git
 ```
 
 ```bash
-cd ~/Sites/{my-laravel-app}
-mkdir -p packages/gitlab-it
-cd packages/gitlab-it
-ln -s ~/Sites/gitlab-sdk gitlab-sdk
+cd ~/Code/{my-laravel-app}
+mkdir -p packages/provisionesta
+cd packages/provisionesta
+ln -s ~/Code/gitlab-api-client gitlab-api-client
 ```
 
 ### Application Composer
@@ -73,37 +82,37 @@ ln -s ~/Sites/gitlab-sdk gitlab-sdk
 Update the `composer.json` file in your testing application (not the package) to add the package to the `autoload.psr-4` array (append the array, don't replace anything).
 
 ```json
-# ~/Sites/{my-laravel-app}/composer.json
+# ~/Code/{my-laravel-app}/composer.json
 
 "autoload": {
     "psr-4": {
         "App\\": "app/",
-        "GitlabIt\\Gitlab\\": "packages/gitlab-it/gitlab-sdk/src",
+        "Provisionesta\\Gitlab\\": "packages/provisionesta/gitlab-api-client/src",
     }
 },
 ```
 
 ### Configure Local Composer Repository
 
-Credit: https://laravel-news.com/developing-laravel-packages-with-local-composer-dependencies
+Credit: [https://laravel-news.com/developing-laravel-packages-with-local-composer-dependencies](https://laravel-news.com/developing-laravel-packages-with-local-composer-dependencies)
 
 ```bash
-cd ~/Sites/{my-laravel-app}
+cd ~/Code/{my-laravel-app}
 
-composer config repositories.gitlab-sdk '{"type": "path", "url": "packages/gitlab-it/gitlab-sdk"}' --file composer.json
+composer config repositories.gitlab-api-client '{"type": "path", "url": "packages/provisionesta/gitlab-api-client"}' --file composer.json
 
-composer require gitlab-it/gitlab-sdk:dev-main
+composer require provisionesta/gitlab-api-client:dev-main
 
 # Package operations: 1 install, 0 updates, 0 removals
-#  - Installing gitlab-it/gitlab-sdk (dev-main): Symlinking from packages/gitlab-it/gitlab-sdk
+#  - Installing provisionesta/gitlab-api-client (dev-main): Symlinking from packages/provisionesta/gitlab-api-client
 ```
 
 ### Validation and Config Copy
 
 ```bash
-php artisan vendor:publish --tag=gitlab-sdk
+php artisan vendor:publish --tag=gitlab-api-client
 
-# Copied File [/Users/jmartin/Sites/gitlab-sdk/src/Config/gitlab-sdk.php] To [/config/gitlab-sdk.php]
+# Copied File [/Users/jmartin/Code/gitlab-api-client/src/Config/gitlab-api-client.php] To [/config/gitlab-api-client.php]
 # Publishing complete.
 ```
 
