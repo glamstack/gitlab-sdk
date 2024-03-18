@@ -946,10 +946,23 @@ class ApiClient
             $metadata['rate_limit_remaining'] = $rate_limit_remaining;
         }
 
+        $method_suffix = explode('::', $method)[1];
+
         if (!empty($request_data)) {
             unset($request_data['key']);
             unset($request_data['password']);
-            $metadata['request_data'] = $request_data;
+
+            // If the method is in config/gitlab-api-client.php, check if request_data is enabled and whether any keys
+            // should be excluded from being logged (usually for sanitization or length reasons)
+            if (in_array($method_suffix, array_keys(config('gitlab-api-client.log.request_data')))) {
+                if (config('gitlab-api-client.log.request_data.' . $method_suffix . '.enabled')) {
+                    $metadata['request_data'] = collect($request_data)->except(
+                        config('gitlab-api-client.log.request_data.' . $method_suffix . '.excluded')
+                    )->toArray();
+                }
+            } else {
+                $metadata['request_data'] = $request_data;
+            }
         }
 
         Log::create(
@@ -960,7 +973,7 @@ class ApiClient
             event_type: implode('.', [
                 'gitlab',
                 'api',
-                explode('::', $method)[1],
+                $method_suffix,
                 $log_type[$response->status->code]['event_type']
             ]),
             level: $log_type[$response->status->code]['level'],
