@@ -9,6 +9,14 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Provisionesta\Audit\Log;
 use Provisionesta\Gitlab\Exceptions\BadRequestException;
+use Provisionesta\Gitlab\Exceptions\CloudflareConnectionRefusedException;
+use Provisionesta\Gitlab\Exceptions\CloudflareConnectionUnreachableException;
+use Provisionesta\Gitlab\Exceptions\CloudflareInternalErrorException;
+use Provisionesta\Gitlab\Exceptions\CloudflareRequestTimeoutException;
+use Provisionesta\Gitlab\Exceptions\CloudflareResponseTimeoutException;
+use Provisionesta\Gitlab\Exceptions\CloudflareSslCertificateException;
+use Provisionesta\Gitlab\Exceptions\CloudflareSslHandshakeException;
+use Provisionesta\Gitlab\Exceptions\CloudflareUnknownErrorException;
 use Provisionesta\Gitlab\Exceptions\ConfigurationException;
 use Provisionesta\Gitlab\Exceptions\ConflictException;
 use Provisionesta\Gitlab\Exceptions\ForbiddenException;
@@ -357,7 +365,43 @@ class ApiClient
             );
         }
 
+        if ($request->status() === 520) {
+            Log::create(
+                errors: [],
+                event_ms: $event_ms,
+                event_type: implode('.', [
+                    'gitlab',
+                    'api',
+                    'put',
+                    'cloudflare',
+                    'unknown',
+                    'retrying'
+                ]),
+                level: 'warning',
+                message: 'Sleeping and Retrying Request',
+                metadata: [
+                    'uri' => $uri,
+                ],
+                method: __METHOD__,
+                transaction: false
+            );
+
+            $i = 1;
+
+            do {
+                $request = Http::withHeaders(self::getRequestHeaders($connection))->put(
+                    url: $connection['url'] . '/api/v' . config('gitlab-api-client.version') . '/' . $uri,
+                    data: $data
+                );
+
+                sleep(2);
+
+                $i++;
+            } while ($request->status() == 520 && $i <= 10);
+        }
+
         $response = self::parseApiResponse($request);
+
         self::logResponse(
             event_ms: $event_ms,
             method: __METHOD__,
@@ -365,6 +409,7 @@ class ApiClient
             request_data: $data,
             response: $response
         );
+
         self::throwExceptionIfEnabled(
             method: 'put',
             url: $connection['url'] . '/api/v' . config('gitlab-api-client.version') . '/' . ltrim($uri, '/'),
@@ -856,6 +901,14 @@ class ApiClient
             500 => ['event_type' => 'critical.server-error', 'level' => 'critical'],
             501 => ['event_type' => 'error.not-implemented', 'level' => 'error'],
             503 => ['event_type' => 'critical.server-unavailable', 'level' => 'critical'],
+            520 => ['event_type' => 'critical.cloudflare.unknown.retryable', 'level' => 'warning'],
+            521 => ['event_type' => 'critical.cloudflare.connection-refused', 'level' => 'critical'],
+            522 => ['event_type' => 'critical.cloudflare.request-timeout', 'level' => 'critical'],
+            523 => ['event_type' => 'critical.cloudflare.connection-unreachable', 'level' => 'critical'],
+            524 => ['event_type' => 'critical.cloudflare.response-timeout', 'level' => 'critical'],
+            525 => ['event_type' => 'critical.cloudflare.ssl-handshake', 'level' => 'critical'],
+            526 => ['event_type' => 'critical.cloudflare.ssl-certificate', 'level' => 'critical'],
+            530 => ['event_type' => 'critical.cloudflare.internal-error', 'level' => 'critical']
         ];
 
         $errors = [];
@@ -938,6 +991,13 @@ class ApiClient
      *      The HTTP response formatted with $this->parseApiResponse()
      *
      * @throws BadRequestException
+     * @throws CloudflareConnectionRefusedException
+     * @throws CloudflareConnectionUnreachableException
+     * @throws CloudflareRequestTimeoutException
+     * @throws CloudflareResponseTimeoutException
+     * @throws CloudflareSslCertificateException
+     * @throws CloudflareSslHandshakeException
+     * @throws CloudflareUnknownErrorException
      * @throws ConflictException
      * @throws ForbiddenException
      * @throws MethodNotAllowedException
@@ -989,6 +1049,22 @@ class ApiClient
                     throw new ServerErrorException(json_encode($response->data));
                 case 503:
                     throw new ServiceUnavailableException();
+                case 520:
+                    throw new CloudflareUnknownErrorException(json_encode($response->data));
+                case 521:
+                    throw new CloudflareConnectionRefusedException(json_encode($response->data));
+                case 522:
+                    throw new CloudflareRequestTimeoutException(json_encode($response->data));
+                case 523:
+                    throw new CloudflareConnectionUnreachableException(json_encode($response->data));
+                case 524:
+                    throw new CloudflareResponseTimeoutException(json_encode($response->data));
+                case 525:
+                    throw new CloudflareSslHandshakeException(json_encode($response->data));
+                case 526:
+                    throw new CloudflareSslCertificateException(json_encode($response->data));
+                case 530:
+                    throw new CloudflareInternalErrorException(json_encode($response->data));
             }
         }
     }
