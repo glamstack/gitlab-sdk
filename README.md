@@ -1231,6 +1231,21 @@ See the [Laravel Collections](https://laravel.com/docs/10.x/collections) documen
 
 This package uses the [provisionesta/audit](https://gitlab.com/provisionesta/audit) package for standardized logs.
 
+### Request Data Log Configuration
+
+To improve the usefulness of logs, the `data` key/value pairs sent with POST and PUT requests are logged. You can choose to disable (exclude) the `request_data` from the logs for specific methods in your `.env` file.
+
+```bash
+GITLAB_API_LOG_REQUEST_DATA_GET_ENABLED=true
+GITLAB_API_LOG_REQUEST_DATA_POST_ENABLED=false # default is true
+GITLAB_API_LOG_REQUEST_DATA_PUT_ENABLED=false # default is true
+GITLAB_API_LOG_REQUEST_DATA_DELETE_ENABLED=true
+```
+
+If you want to exclude specific keys, they can be set in the `config/gitlab-api-client.php` file after you [publish the configuration file](#publish-the-configuration-file).
+
+By default, the `key` and `password` fields are excluded from `GET` requests and `content` is excluded from `POST` and `PUT` requests (ex. base64 encoded content for repository files).
+
 ### Event Types
 
 The `event_type` key should be used for any categorization and log searches.
