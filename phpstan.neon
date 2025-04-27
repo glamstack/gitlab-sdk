@@ -10,9 +10,8 @@ parameters:
     level: 9
 
     ignoreErrors:
-        - '#Access to an undefined property object::\$headers.#'
-        - '#Access to an undefined property object::\$status.#'
+        -
+            identifier: larastan.noEnvCallsOutsideOfConfig
+            path: src/Config/gitlab-api-client.php
     excludePaths:
         - ./*/*/FileToBeExcluded.php
-
-    checkMissingIterableValueType: false
