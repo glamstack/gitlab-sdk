@@ -11,16 +11,16 @@
     ],
     "require": {
         "php": "^8.0",
-        "illuminate/config": "^8.0 || ^9.0 || ^10.0 || ^11.0",
-        "illuminate/http": "^8.0 || ^9.0 || ^10.0 || ^11.0",
-        "illuminate/log": "^8.0 || ^9.0 || ^10.0 || ^11.0",
-        "illuminate/support": "^8.0 || ^9.0 || ^10.0 || ^11.0",
+        "illuminate/config": "^8.0 || ^9.0 || ^10.0 || ^11.0 || ^12.0",
+        "illuminate/http": "^8.0 || ^9.0 || ^10.0 || ^11.0 || ^12.0",
+        "illuminate/log": "^8.0 || ^9.0 || ^10.0 || ^11.0 || ^12.0",
+        "illuminate/support": "^8.0 || ^9.0 || ^10.0 || ^11.0 || ^12.0",
         "nesbot/carbon": "^2.67 || ^3.0",
         "provisionesta/audit": "^1.1"
     },
     "require-dev": {
-        "orchestra/testbench": "^6.23 || ^7.0 || ^8.0",
-        "larastan/larastan": "^2.7"
+        "orchestra/testbench": "^6.23 || ^7.0 || ^8.0 || ^9.0 || ^10.0",
+        "larastan/larastan": "^2.7 || ^3.0"
     },
     "suggest": {
         "provisionesta/gitlab-laravel-actions": "Collection of Laravel Actions API/Console/Job/Service CRUD classes for GitLab users, groups, projects, epics, issues, merge requests, repository files, and other endpoints."
